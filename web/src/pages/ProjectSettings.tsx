@@ -9,7 +9,7 @@ import { Icon } from '../components/Icon';
 import { MarkdownEditor } from '../components/Markdown';
 import { Analytics, ModThread, ProjectPermissionPicker, Publishing } from '../components/ProjectPanels';
 import { RequireAuth } from '../components/RequireAuth';
-import { Alert, Avatar, ChannelBadge, Empty, Field, Modal, PageLoading, ProjectIcon, Spinner, StatusBadge, NativeList, Tabs, useAsync, VerifiedImg } from '../components/ui';
+import { Alert, Avatar, ChannelBadge, Empty, Field, Modal, PageLoading, ProjectIcon, Spinner, StatusBadge, HostList, NativeList, Tabs, useAsync, VerifiedImg } from '../components/ui';
 import { SITE } from '../config';
 import { ApiError, api, upload } from '../lib/api';
 import { date } from '../lib/format';
@@ -494,6 +494,7 @@ function ScanDetail({ v }: { v: Version }) {
             </div>
           )}
           <NativeList natives={s.natives ?? []} />
+          <HostList hosts={s.hosts ?? []} />
           {s.findings.length > 0 ? (
             <ul class="finding-list">
               {s.findings.map((f, i) => (

@@ -52,6 +52,25 @@ export function NativeList({ natives }: { natives: { path: string; sha256: strin
   );
 }
 
+// Websites a scanned file links to, for owners and moderators.
+export function HostList({ hosts }: { hosts: string[] }) {
+  if (!hosts.length) return null;
+  return (
+    <details class="native-list">
+      <summary>
+        <strong>{t('Websites it links to')}</strong> <span class="muted">({hosts.length})</span>
+      </summary>
+      <ul>
+        {hosts.map((h) => (
+          <li key={h}>
+            <span class="mono finding-path">{h}</span>
+          </li>
+        ))}
+      </ul>
+    </details>
+  );
+}
+
 // An image from an author's repository, shown only once it matches its recorded SHA-256.
 export function VerifiedImg({ src, alt = '', class: cls, loading }: { src: string | null; alt?: string; class?: string; loading?: 'lazy' | 'eager' }) {
   const verified = useVerifiedImage(src);

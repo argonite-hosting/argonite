@@ -199,6 +199,7 @@ export interface FileRow {
   capabilities: string | null;
   engines: string | null;
   natives: string | null;
+  hosts: string | null;
   position: number;
 }
 
@@ -253,6 +254,7 @@ function scanOf(f: FileRow): ScanSummary {
     engines: parseJson<string[]>(f.engines, []),
     scannedAt: f.scanned_at,
     natives: parseJson<NativeFile[]>(f.natives, []),
+    hosts: parseJson<string[]>(f.hosts, []),
   };
 }
 
@@ -292,7 +294,7 @@ export async function loadVersions(env: Env, q: VersionQuery): Promise<Version[]
        WHERE d.version_id IN (${scope})`,
     ).bind(...binds),
     env.DB.prepare(
-      `SELECT id, version_id, kind, asset_id, filename, size, sha1, sha256, sha512, signature, scanned_at, verdict, findings, capabilities, engines, natives, position
+      `SELECT id, version_id, kind, asset_id, filename, size, sha1, sha256, sha512, signature, scanned_at, verdict, findings, capabilities, engines, natives, hosts, position
        FROM files WHERE version_id IN (${scope}) ORDER BY kind = 'primary' DESC, position, created_at`,
     ).bind(...binds),
   ]);
@@ -352,7 +354,7 @@ export async function loadVersions(env: Env, q: VersionQuery): Promise<Version[]
       releaseUrl: r.release_id ? `https://github.com/${r.repo_full_name}/releases/tag/${encodeURIComponent(r.tag)}` : null,
       ...(q.includeScan
         ? {
-            scan: primaryRow ? scanOf(primaryRow) : { verdict: null, findings: [], capabilities: [], engines: [], scannedAt: null, natives: [] },
+            scan: primaryRow ? scanOf(primaryRow) : { verdict: null, findings: [], capabilities: [], engines: [], scannedAt: null, natives: [], hosts: [] },
             scans: Object.fromEntries(fileRows.map((f) => [f.id, { ...scanOf(f), filename: f.filename, kind: f.kind, uploaded: f.asset_id !== null }])),
             publishPending: r.publish_pending === 1,
           }

@@ -3,7 +3,7 @@ import { REPORT_REASONS, loaderLabel } from '../../../shared/taxonomy';
 import type { AuditEntry, Report, ReviewItem } from '../../../shared/types';
 import { Icon } from '../components/Icon';
 import { RequireAuth } from '../components/RequireAuth';
-import { Avatar, ChannelBadge, Empty, Modal, NativeList, PageLoading, ProjectIcon, StatusBadge, Tabs, useAsync } from '../components/ui';
+import { Avatar, ChannelBadge, Empty, HostList, Modal, NativeList, PageLoading, ProjectIcon, StatusBadge, Tabs, useAsync } from '../components/ui';
 import { api } from '../lib/api';
 import { ago, bytes, date } from '../lib/format';
 import { useHead } from '../lib/head';
@@ -106,6 +106,7 @@ function Queue({ status }: { status: 'review' | 'rejected' }) {
                 </div>
               )}
               <NativeList natives={Object.values(v.scans ?? {}).flatMap((x) => x.natives ?? [])} />
+              <HostList hosts={[...new Set(Object.values(v.scans ?? {}).flatMap((x) => x.hosts ?? []))].sort()} />
               {v.scan && v.scan.findings.length > 0 && (
                 <ul class="finding-list">
                   {v.scan.findings.map((f, i) => (

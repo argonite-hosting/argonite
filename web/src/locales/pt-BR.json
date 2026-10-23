@@ -1089,6 +1089,7 @@
   "We check Java servers every few minutes with the same status request the multiplayer screen sends. Nothing else is ever sent.": "Verificamos servidores Java a cada poucos minutos com a mesma solicitação de status que a tela de multijogador envia. Nada mais é enviado.",
   "We have flagged this version for review.": "Sinalizamos esta versão para revisão.",
   "Website": "Site",
+  "Websites it links to": "Sites para os quais aponta",
   "We’re unpacking them and checking them with ClamAV, YARA and our bytecode rules. This usually takes one to three minutes. You can leave this page; the result also appears on your dashboard.": "Estamos descompactando e verificando com ClamAV, YARA e nossas regras de bytecode. Isso costuma levar de um a três minutos. Você pode sair desta página; o resultado também aparece no seu painel.",
   "What are you publishing?": "O que você vai publicar?",
   "What changed in this version?": "O que mudou nesta versão?",

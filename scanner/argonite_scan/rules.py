@@ -109,6 +109,16 @@ LOADER_PREFIXES = (
 )
 MIXIN = "Lorg/spongepowered/asm/mixin/Mixin;"
 
+# Links compiled into a mod. Hosts are compared between versions and checked against malware lists.
+URL_IN_CODE = re.compile(r"(?i)\bhttps?:[/\\]+[a-z0-9.-]+\.[a-z]{2,}(?::\d+)?[^\s\"'<>`]*")
+# XML and schema namespaces that libraries carry but never fetch.
+NAMESPACE_HOSTS = {"www.w3.org", "w3.org", "xml.org", "www.xml.org", "java.sun.com", "xmlpull.org", "xml.apache.org", "www.apache.org", "apache.org", "json-schema.org", "purl.org", "ns.adobe.com", "schemas.microsoft.com", "www.oracle.com", "javafx.com"}
+MAX_LINKS = 400
+
+# Ways to find the user's home or system folders, which lie outside the game folder.
+OUTSIDE_MEMBERS = {"java/lang/System.getenv", "java/lang/System.getProperty"}
+OUTSIDE_KEYS = {"user.home", "appdata", "localappdata", "userprofile", "programdata", "home", "xdg_config_home", "xdg_data_home", "homedrive", "homepath"}
+
 SENSITIVE_PATHS = [
     "local storage/leveldb",
     "launcher_accounts.json",
@@ -173,6 +183,8 @@ class Report:
     class_count: int = 0
     # Every bundled native library or program: path, sha256, size and platform.
     natives: list[dict] = field(default_factory=list)
+    # Links found in code and config files, first place each was seen.
+    links: dict[str, str] = field(default_factory=dict)
 
     def add(self, rule: str, severity: str, detail: str, path: str | None = None) -> None:
         if len(self.findings) >= 200:
@@ -206,10 +218,34 @@ TEXT_SUFFIXES = (".json", ".toml", ".yml", ".yaml", ".properties", ".cfg", ".txt
 def _scan_text(data: bytes, path: str, report: Report, ioc_strings: list[str]) -> None:
     if len(data) > 4 * 1024 * 1024:
         return
-    text = data.decode("utf-8", "replace").lower()
+    raw = data.decode("utf-8", "replace")
+    text = raw.lower()
     for ioc in ioc_strings:
         if ioc in text:
             report.add("ioc.string", "critical", f"Contains a known malware indicator ({ioc})", path)
+    _collect_links(raw, path, report)
+
+
+def _collect_links(text: str, path: str, report: Report) -> None:
+    if len(report.links) >= MAX_LINKS:
+        return
+    for m in URL_IN_CODE.finditer(text[:2_000_000]):
+        url = re.sub(r"^(https?):[/\\]+", r"\1://", m.group(0), flags=re.I).replace("\\", "/").rstrip(".,;:!?)]}'\"")
+        host = link_host(url)
+        if host and host not in NAMESPACE_HOSTS and url not in report.links:
+            report.links[url] = path
+            if len(report.links) >= MAX_LINKS:
+                return
+
+
+def link_host(url: str) -> str:
+    rest = url.split("://", 1)[-1]
+    host = re.split(r"[/?#:]", rest, maxsplit=1)[0].lower().rstrip(".")
+    return host if "." in host and not host.endswith((".local", ".localhost", ".invalid", ".example")) and host not in ("localhost",) else ""
+
+
+def hosts_of(report: Report) -> list[str]:
+    return sorted({link_host(u) for u in report.links} - {""})
 
 
 def analyse(walked: WalkResult, project_type: str, iocs: dict[str, list[str]]) -> Report:
@@ -291,11 +327,13 @@ def analyse(walked: WalkResult, project_type: str, iocs: dict[str, list[str]]) -
     # Combos alone don't make a file suspicious: plenty of honest mods shell out or fetch updates.
     # New risky capabilities still go to a human via the Worker's capability diff.
     if "process_exec" in caps and ("network" in caps or "dynamic_classloading" in caps):
-        report.add("combo.exec_network", "medium", "Runs external programs and talks to the network or loads code at runtime")
+        report.add("combo.exec_network", "high", "Runs external programs and talks to the network or loads code at runtime")
     if "dynamic_classloading" in caps and "crypto_decode" in caps and "network" in caps:
         report.add("combo.remote_code", "high", "Downloads, decrypts and loads code at runtime")
     elif "dynamic_classloading" in caps and ("network" in caps or "crypto_decode" in caps):
-        report.add("combo.remote_code", "medium", "Loads classes at runtime alongside network access or decryption")
+        report.add("combo.remote_code", "high", "Loads classes at runtime alongside network access or decryption")
+    if "outside_game_dir" in caps and "network" in caps:
+        report.add("combo.outside_network", "high", "Looks outside the game folder and talks to the network")
     if "jar_writing" in caps and code_expected:
         report.add("combo.jar_writing", "medium", "Writes jar/zip files (self-spreading malware does this; so do some legit tools)")
     return report
@@ -364,3 +402,9 @@ def _check_class(info: classfile.ClassInfo, path: str, report: Report, ioc_strin
         if BASE64_BLOB.match(s):
             report.add("strings.embedded_blob", "medium", "Contains a large base64 blob", path)
             break
+    for s in info.strings:
+        if "http" in s.lower():
+            _collect_links(s, path, report)
+    if info.members & OUTSIDE_MEMBERS and any(s.strip().lower() in OUTSIDE_KEYS for s in info.strings):
+        report.capabilities.add("outside_game_dir")
+        report.add("class.outside_game_dir", "medium", "Finds the user's home or system folders, outside the game folder", path)

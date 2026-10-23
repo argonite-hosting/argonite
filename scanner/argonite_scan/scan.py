@@ -77,6 +77,8 @@ def scan_bytes(
             used.append("malwarebazaar")
         if engines.virustotal(digests["sha256"], report):
             used.append("virustotal")
+        if engines.check_links(report.links, report, rules.hosts_of(report)):
+            used.append("link-lists")
         # The same lookups for each bundled native, so a known-bad library inside a new jar is still caught.
         seen: set[str] = set()
         for i, native in enumerate(n for n in report.natives if not (n["sha256"] in seen or seen.add(n["sha256"]))):
@@ -101,7 +103,7 @@ def scan_bytes(
         "findings": findings,
         "capabilities": sorted(report.capabilities),
         "engines": used,
-        "metadata": {**meta, "classes": report.class_count, "entries": len(walked.entries), "natives": report.natives},
+        "metadata": {**meta, "classes": report.class_count, "entries": len(walked.entries), "natives": report.natives, "hosts": rules.hosts_of(report)},
         "contents": contents,
     }
 

@@ -16,7 +16,7 @@ const STALE_CLAIM_MS = 30 * 60 * 1000;
 export const MAX_ATTEMPTS = 3;
 const SEVERITIES = new Set(['info', 'low', 'medium', 'high', 'critical']);
 // Network access and plain encryption are everywhere in honest mods, so they're recorded but never force a review on their own.
-const RISKY_CAPABILITIES = new Set(['process_exec', 'native_code', 'dynamic_classloading', 'instrumentation', 'credential_access', 'jar_writing', 'session_token', 'class_transformer', 'patches_loader']);
+const RISKY_CAPABILITIES = new Set(['process_exec', 'native_code', 'dynamic_classloading', 'instrumentation', 'credential_access', 'jar_writing', 'session_token', 'class_transformer', 'patches_loader', 'outside_game_dir']);
 const MAX_CONTENTS_BYTES = 400_000;
 
 async function authenticate(ctx: Ctx): Promise<Record<string, unknown>> {
@@ -225,32 +225,72 @@ function cleanNatives(raw: unknown): NativeFile[] {
   });
 }
 
-// Natives that weren't in the last live version, or whose bytes changed under the same path.
-async function nativeChanges(ctx: Ctx, projectId: string, versionId: string, current: NativeFile[]): Promise<string[]> {
-  if (!current.length) return [];
-  const prev = await ctx.env.DB.prepare(
-    `SELECT f.natives FROM files f WHERE f.version_id = (
+const HOST = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)+$/;
+
+function cleanHosts(raw: unknown): string[] {
+  if (!Array.isArray(raw)) return [];
+  return [...new Set(raw.filter((h): h is string => typeof h === 'string' && h.length <= 253 && HOST.test(h)))].slice(0, 400);
+}
+
+interface PrevFile {
+  findings: string | null;
+  natives: string | null;
+  hosts: string | null;
+  capabilities: string | null;
+}
+
+// The files of the project's most recent live version: what was last approved or passed.
+async function previousLive(ctx: Ctx, projectId: string, versionId: string): Promise<PrevFile[]> {
+  const rows = await ctx.env.DB.prepare(
+    `SELECT f.findings, f.natives, f.hosts, f.capabilities FROM files f WHERE f.version_id = (
        SELECT id FROM versions WHERE project_id = ? AND status = 'live' AND id != ? ORDER BY published_at DESC LIMIT 1)`,
   )
     .bind(projectId, versionId)
-    .all<{ natives: string | null }>();
-  const before = new Map<string, string>();
-  for (const row of prev.results) for (const n of parseJson<NativeFile[]>(row.natives, [])) before.set(n.path, n.sha256);
-  const known = new Set(before.values());
-  const notes: string[] = [];
-  for (const n of current) {
-    if (known.has(n.sha256)) continue;
-    notes.push(before.has(n.path) ? `Native library changed since the last version: ${n.path}` : `New native library: ${n.path}`);
-  }
-  return notes.length > 5 ? [...notes.slice(0, 5), `and ${notes.length - 5} more native files`] : notes;
+    .all<PrevFile>();
+  return rows.results;
+}
+
+// Websites the version links to that the last live version didn't.
+function hostChanges(prev: PrevFile[], current: string[]): string[] {
+  // No earlier live version, or one scanned before hosts were kept: nothing to compare against.
+  if (!current.length || !prev.length || prev.every((r) => r.hosts === null)) return [];
+  const before = new Set(prev.flatMap((r) => parseJson<string[]>(r.hosts, [])));
+  const added = [...new Set(current)].filter((h) => !before.has(h)).sort();
+  if (!added.length) return [];
+  const list = added.length > 8 ? `${added.slice(0, 8).join(', ')} and ${added.length - 8} more` : added.join(', ');
+  return [`Links to new websites since the last version: ${list}`];
+}
+
+// Where a native sits, ignoring version numbers, so libopus-1.3.1.so and libopus-1.4.so count as the
+// same library. Rebuilt natives are expected in updates; they're still scanned and looked up every time.
+const nativeSlot = (n: NativeFile) => `${n.platform}|${n.path.split('!/').pop()!.toLowerCase().replace(/\d+(?:[._-]\d+)*/g, '#')}`;
+
+// Natives in places the last live version didn't have one.
+function nativeChanges(prev: PrevFile[], current: NativeFile[]): string[] {
+  if (!current.length) return [];
+  const before = new Set(prev.flatMap((row) => parseJson<NativeFile[]>(row.natives, [])).map(nativeSlot));
+  const added = current.filter((n) => !before.has(nativeSlot(n))).map((n) => `New native library: ${n.path}`);
+  return added.length > 5 ? [...added.slice(0, 5), `and ${added.length - 5} more native files`] : added;
+}
+
+// Findings that are never accepted just because an earlier version had them too.
+const NEVER_CARRIED = /^(link\.|reputation\.|ioc\.|clamav|yara\.|file\.disguised_executable)/;
+
+// A finding is identified by its rule and where it sits inside the file. Only the path inside the
+// innermost jar counts, with version numbers ignored, since both change from one release to the next.
+const findingKey = (f: Finding) => `${f.rule}|${(f.path ?? '').split('!/').pop()!.toLowerCase().replace(/\d+(?:[._-]\d+)*/g, '#')}`;
+
+// High findings a moderator (or an earlier carried-over version) already accepted for this project.
+function acceptedFindings(prev: PrevFile[]): Set<string> {
+  return new Set(prev.flatMap((r) => parseJson<Finding[]>(r.findings, [])).filter((f) => f.severity === 'high' && !NEVER_CARRIED.test(f.rule)).map(findingKey));
 }
 
 // The version is decided once every file has a fingerprint: any malicious file rejects it, any reason
 // to look closer sends it to review, otherwise it goes live (and its GitHub release gets published).
 async function decideVersion(ctx: Ctx, versionId: string): Promise<string> {
-  const files = await ctx.env.DB.prepare('SELECT id, kind, filename, sha256, verdict, findings, capabilities, natives FROM files WHERE version_id = ?')
+  const files = await ctx.env.DB.prepare('SELECT id, kind, filename, sha256, verdict, findings, capabilities, natives, hosts FROM files WHERE version_id = ?')
     .bind(versionId)
-    .all<{ id: string; kind: string; filename: string; sha256: string | null; verdict: string | null; findings: string | null; capabilities: string | null; natives: string | null }>();
+    .all<{ id: string; kind: string; filename: string; sha256: string | null; verdict: string | null; findings: string | null; capabilities: string | null; natives: string | null; hosts: string | null }>();
   if (files.results.some((f) => !f.sha256)) return 'scanning';
   const v = await ctx.env.DB.prepare(
     `SELECT v.id, v.status, v.project_id, v.author_id, u.approved_uploads, u.github_created_at
@@ -272,10 +312,18 @@ async function decideVersion(ctx: Ctx, versionId: string): Promise<string> {
     return 'rejected';
   }
 
-  const reasons: string[] = await nativeChanges(ctx, v.project_id, v.id, all.flatMap((f) => parseJson<NativeFile[]>(f.natives, [])));
+  const prevFiles = await previousLive(ctx, v.project_id, v.id);
+  const reasons: string[] = [
+    ...nativeChanges(prevFiles, all.flatMap((f) => parseJson<NativeFile[]>(f.natives, []))),
+    ...hostChanges(prevFiles, all.flatMap((f) => parseJson<string[]>(f.hosts, []))),
+  ];
+  // Once a moderator approves a version, the same findings in later versions don't need another look,
+  // as long as nothing around them changed. Natives and websites are compared above.
+  const accepted = acceptedFindings(prevFiles);
   for (const f of all.filter((x) => x.verdict === 'suspicious')) {
-    const top = f.list.find((x) => x.severity === 'critical' || x.severity === 'high') ?? f.list[0];
-    reasons.push(`Flagged by the scanner${top ? `: ${top.detail}` : ''}${f.kind === 'primary' ? '' : ` (${f.filename})`}`);
+    const fresh = f.list.filter((x) => (x.severity === 'high' || x.severity === 'critical') && (NEVER_CARRIED.test(x.rule) || !accepted.has(findingKey(x))));
+    if (!fresh.length) continue;
+    reasons.push(`Flagged by the scanner: ${fresh[0].detail}${fresh.length > 1 ? ` (and ${fresh.length - 1} more)` : ''}${f.kind === 'primary' ? '' : ` (${f.filename})`}`);
   }
   if (v.approved_uploads < SITE.review.firstUploadsNeedReview) reasons.push('First upload from this account');
   if (Date.now() - v.github_created_at < SITE.review.minGithubAccountAgeDays * 86_400_000) reasons.push('New GitHub account');
@@ -397,7 +445,8 @@ async function result(ctx: Ctx): Promise<Response> {
   const capabilities = cleanList(r.capabilities);
   const engines = cleanList(r.engines, 20);
   const natives = cleanNatives((r.metadata as { natives?: unknown } | undefined)?.natives);
-  const { natives: _natives, ...restMeta } = (r.metadata ?? {}) as Record<string, unknown>;
+  const hosts = cleanHosts((r.metadata as { hosts?: unknown } | undefined)?.hosts);
+  const { natives: _natives, hosts: _hosts, ...restMeta } = (r.metadata ?? {}) as Record<string, unknown>;
   const rawMeta = JSON.stringify(restMeta);
   const metadata = rawMeta.length <= 32_000 ? rawMeta : JSON.stringify({ truncated: true });
   const contents = c.project_type === 'modpack' && c.file_kind === 'primary' ? cleanContents(r.contents) : null;
@@ -430,9 +479,9 @@ async function result(ctx: Ctx): Promise<Response> {
 
   await ctx.env.DB.batch([
     ctx.env.DB.prepare(
-      `UPDATE files SET sha1 = ?, sha256 = ?, sha512 = ?, signature = ?, scanned_at = ?, verdict = ?, findings = ?, capabilities = ?, engines = ?, metadata = ?, contents = ?, natives = ?
+      `UPDATE files SET sha1 = ?, sha256 = ?, sha512 = ?, signature = ?, scanned_at = ?, verdict = ?, findings = ?, capabilities = ?, engines = ?, metadata = ?, contents = ?, natives = ?, hosts = ?
        WHERE id = ? AND sha256 IS NULL`,
-    ).bind(sha1, sha256, sha512, signature, now, verdict, JSON.stringify(findings), JSON.stringify(capabilities), JSON.stringify(engines), metadata, contents, JSON.stringify(natives), c.file_id),
+    ).bind(sha1, sha256, sha512, signature, now, verdict, JSON.stringify(findings), JSON.stringify(capabilities), JSON.stringify(engines), metadata, contents, JSON.stringify(natives), JSON.stringify(hosts), c.file_id),
     finish('done'),
   ]);
   const status = await decideVersion(ctx, c.version_id);

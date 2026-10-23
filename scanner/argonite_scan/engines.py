@@ -80,6 +80,65 @@ def _post_form(url: str, fields: dict[str, str], headers: dict[str, str]) -> dic
         return json.loads(res.read().decode())
 
 
+SHARED_HOSTS = {
+    "github.com", "raw.githubusercontent.com", "objects.githubusercontent.com", "gist.github.com", "gist.githubusercontent.com", "api.github.com",
+    "gitlab.com", "bitbucket.org", "codeberg.org", "modrinth.com", "api.modrinth.com", "cdn.modrinth.com", "curseforge.com", "www.curseforge.com",
+    "api.curseforge.com", "edge.forgecdn.net", "mediafilez.forgecdn.net", "maven.fabricmc.net", "meta.fabricmc.net", "maven.neoforged.net",
+    "maven.minecraftforge.net", "files.minecraftforge.net", "youtube.com", "www.youtube.com", "youtu.be", "discord.gg", "discord.com",
+    "minecraft.net", "www.minecraft.net", "minecraft.wiki", "mojang.com", "api.mojang.com", "sessionserver.mojang.com", "textures.minecraft.net",
+    "launcher.mojang.com", "piston-meta.mojang.com", "piston-data.mojang.com", "login.microsoftonline.com", "user.auth.xboxlive.com",
+    "xsts.auth.xboxlive.com", "api.minecraftservices.com", "patreon.com", "www.patreon.com", "ko-fi.com", "paypal.com", "www.paypal.com",
+}
+
+
+def check_links(links: dict[str, str], report: Report, hosts: list[str]) -> bool:
+    """Checks links compiled into the file against malware and phishing lists.
+
+    Every site goes through Cloudflare's malware-blocking resolver (it answers 0.0.0.0 for listed
+    domains). With an abuse.ch key, URLhaus is asked about each exact URL as well.
+    """
+    from concurrent.futures import ThreadPoolExecutor
+
+    if not links:
+        return False
+
+    def resolver(host: str) -> bool:
+        if host in SHARED_HOSTS or host.replace(".", "").isdigit():
+            return False
+        url = "https://security.cloudflare-dns.com/dns-query?" + urllib.parse.urlencode({"name": host, "type": "A"})
+        req = urllib.request.Request(url, headers={"Accept": "application/dns-json", "User-Agent": UA})
+        try:
+            with urllib.request.urlopen(req, timeout=5) as res:
+                answers = json.loads(res.read().decode()).get("Answer") or []
+        except (urllib.error.URLError, ValueError, TimeoutError):
+            return False
+        return any(a.get("type") == 1 and a.get("data") == "0.0.0.0" for a in answers)
+
+    key = os.environ.get("URLHAUS_KEY") or os.environ.get("MALWAREBAZAAR_KEY")
+
+    def urlhaus(url: str) -> bool:
+        try:
+            data = _post_form("https://urlhaus-api.abuse.ch/v1/url/", {"url": url}, {"Auth-Key": key or ""})
+        except (urllib.error.URLError, ValueError, TimeoutError):
+            return False
+        return data.get("query_status") == "ok" and data.get("url_status") in ("online", "unknown")
+
+    first_seen = {}
+    for url, where in links.items():
+        from .rules import link_host
+        first_seen.setdefault(link_host(url), where)
+    with ThreadPoolExecutor(max_workers=16) as pool:
+        flagged = [h for h, bad in zip(hosts, pool.map(resolver, hosts)) if bad]
+        for host in flagged:
+            report.add("link.malicious_host", "high", f"Links to {host}, which is on a malware or phishing list", first_seen.get(host))
+        if key:
+            urls = list(links)[:100]
+            for url, bad in zip(urls, pool.map(urlhaus, urls)):
+                if bad:
+                    report.add("link.malicious_url", "critical", f"Links to a URL listed on URLhaus as serving malware ({url[:120]})", links[url])
+    return True
+
+
 def malwarebazaar(sha256: str, report: Report, path: str | None = None) -> bool:
     key = os.environ.get("MALWAREBAZAAR_KEY")
     if not key:

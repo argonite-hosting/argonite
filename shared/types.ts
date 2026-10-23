@@ -145,6 +145,8 @@ export interface ScanSummary {
   engines: string[];
   scannedAt: number | null;
   natives: NativeFile[];
+  // Websites the file links to from its code and config.
+  hosts: string[];
 }
 
 export interface Version {

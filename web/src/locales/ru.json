@@ -1091,6 +1091,7 @@
   "We check Java servers every few minutes with the same status request the multiplayer screen sends. Nothing else is ever sent.": "Мы проверяем серверы Java каждые несколько минут тем же запросом статуса, что отправляет экран сетевой игры. Ничего другого не отправляется.",
   "We have flagged this version for review.": "Мы отправили эту версию на проверку.",
   "Website": "Сайт",
+  "Websites it links to": "Сайты, на которые он ссылается",
   "We’re unpacking them and checking them with ClamAV, YARA and our bytecode rules. This usually takes one to three minutes. You can leave this page; the result also appears on your dashboard.": "Распаковываем и проверяем их ClamAV, YARA и нашими правилами байткода. Обычно это занимает от одной до трёх минут. Можно уйти с этой страницы: результат также появится в вашей панели.",
   "What are you publishing?": "Что вы публикуете?",
   "What changed in this version?": "Что изменилось в этой версии?",

@@ -1085,6 +1085,7 @@
   "We check Java servers every few minutes with the same status request the multiplayer screen sends. Nothing else is ever sent.": "我们每隔几分钟会使用与多人游戏界面相同的状态请求检查 Java 版服务器，不会发送任何其他内容。",
   "We have flagged this version for review.": "我们已将此版本标记为待审核。",
   "Website": "网站",
+  "Websites it links to": "其中链接的网站",
   "We’re unpacking them and checking them with ClamAV, YARA and our bytecode rules. This usually takes one to three minutes. You can leave this page; the result also appears on your dashboard.": "我们正在解包，并用 ClamAV、YARA 和我们的字节码规则进行检查。通常需要一到三分钟。你可以离开此页面，结果也会显示在你的控制面板中。",
   "What are you publishing?": "你要发布什么？",
   "What changed in this version?": "此版本有哪些变化？",
