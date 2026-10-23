@@ -102,8 +102,9 @@ export function SandboxList({ runs, detailed = false }: { runs?: SandboxSummary[
                     .join(' · ')}
                 </span>
               )}
-              {r.outcome !== 'tested' && r.note && <span class="field-hint">{r.note}</span>}
+              {r.note && r.outcome !== 'tested' && <span class="field-hint">{r.note}</span>}
             </div>
+            {detailed && r.outcome === 'tested' && r.note && <p class="field-hint">{r.note}</p>}
             {r.findings.length > 0 ? (
               <ul class="finding-list">
                 {r.findings.map((f, i) => (
