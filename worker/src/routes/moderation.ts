@@ -1,3 +1,4 @@
+import { SITE } from '../../../shared/config';
 import { REPORT_REASONS } from '../../../shared/taxonomy';
 import type { AuditEntry, Report, ReviewItem } from '../../../shared/types';
 import { cleanMultiline, cleanText, isId } from '../../../shared/validate';
@@ -9,6 +10,7 @@ import { assertSameSite, audit, projectAccess, rateLimit } from '../lib/guard';
 import { badRequest, conflict, forbidden, json, notFound, readJson } from '../lib/http';
 import { oneOf, str } from '../lib/input';
 import type { Ctx, Router } from '../lib/router';
+import { sandboxEnabled } from '../lib/sandbox';
 import { requireActiveUser, requireAdmin, requireModerator } from '../lib/session';
 
 const REASON_IDS = REPORT_REASONS.map((r) => r.id);
@@ -52,7 +54,8 @@ async function queue(ctx: Ctx): Promise<Response> {
     : { results: [] as ProjectRow[] };
   const byId = new Map(rows.results.map((r) => [r.id, toSummary(r)]));
   const items: ReviewItem[] = versions.flatMap((v) => (byId.has(v.projectId) ? [{ version: v, project: byId.get(v.projectId)! }] : []));
-  return json({ items });
+  // Which test machines a moderator can start from here (none when behaviour tests aren't set up).
+  return json({ items, sandboxSystems: sandboxEnabled(ctx.env) ? SITE.sandbox.systems : [] });
 }
 
 async function decide(ctx: Ctx): Promise<Response> {

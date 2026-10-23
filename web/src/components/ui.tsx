@@ -76,13 +76,13 @@ const SANDBOX_OS: Record<SandboxSummary['os'], string> = { linux: 'Linux', windo
 
 // What the behaviour tests saw when the file ran inside real Minecraft on fresh machines.
 // Authors get each machine's status only; `detailed` (moderators) adds what it saw.
-export function SandboxList({ runs, detailed = false }: { runs?: SandboxSummary[]; detailed?: boolean }) {
+export function SandboxList({ runs, detailed = false, hideTitle = false }: { runs?: SandboxSummary[]; detailed?: boolean; hideTitle?: boolean }) {
   if (!runs?.length) return null;
   const outcome = (r: SandboxSummary) =>
     r.outcome === 'running' ? t('Running') : r.outcome === 'tested' ? t('Tested') : r.outcome === 'unsupported' ? t('Not tested') : t('Didn’t finish');
   return (
     <div class="sandbox-list">
-      <strong>{t('Behaviour tests')}</strong>
+      {!hideTitle && <strong>{t('Behaviour tests')}</strong>}
       <ul>
         {runs.map((r) => (
           <li key={r.os} class="sandbox-run">
@@ -105,22 +105,38 @@ export function SandboxList({ runs, detailed = false }: { runs?: SandboxSummary[
               {r.note && r.outcome !== 'tested' && <span class="field-hint">{r.note}</span>}
             </div>
             {detailed && r.outcome === 'tested' && r.note && <p class="field-hint">{r.note}</p>}
-            {r.findings.length > 0 ? (
-              <ul class="finding-list">
-                {r.findings.map((f, i) => (
-                  <li key={i} class={`finding sev-${f.severity}`}>
-                    <span class="badge">{t(f.severity)}</span>
-                    <span>{f.detail}</span>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              detailed && r.outcome === 'tested' && <p class="field-hint">{t('Nothing suspicious happened.')}</p>
-            )}
+            <SandboxFindings run={r} detailed={detailed} />
           </li>
         ))}
       </ul>
     </div>
+  );
+}
+
+// Serious findings shown; minor notes (a crash, a nameless address) folded away.
+function SandboxFindings({ run, detailed }: { run: SandboxSummary; detailed: boolean }) {
+  const serious = run.findings.filter((f) => f.severity === 'high' || f.severity === 'critical');
+  const minor = run.findings.filter((f) => f.severity !== 'high' && f.severity !== 'critical');
+  const row = (f: SandboxSummary['findings'][number], i: number) => (
+    <li key={i} class={`finding sev-${f.severity}`}>
+      <span class="badge">{t(f.severity)}</span>
+      <span>{f.detail.replace(/ \((Linux|Windows|macOS) test\)$/, '')}</span>
+    </li>
+  );
+  return (
+    <>
+      {serious.length > 0 ? (
+        <ul class="finding-list">{serious.map(row)}</ul>
+      ) : (
+        detailed && run.outcome === 'tested' && <p class="review-ok">{t('Nothing suspicious happened.')}</p>
+      )}
+      {detailed && minor.length > 0 && (
+        <details class="review-more">
+          <summary>{tn(minor.length, '{n} minor note', '{n} minor notes')}</summary>
+          <ul class="finding-list">{minor.map(row)}</ul>
+        </details>
+      )}
+    </>
   );
 }
 

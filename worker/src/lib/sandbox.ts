@@ -262,54 +262,28 @@ export function summaryOf(os: SandboxOs, r: SandboxReport): SandboxSummary {
   };
 }
 
-// ---- Deciding --------------------------------------------------------------------------------
+// ---- Starting -------------------------------------------------------------------------------
 
-export type SandboxStage = { state: 'off' } | { state: 'pending' } | { state: 'done'; malicious: string | null; reasons: string[] };
+export const TESTABLE_TYPES = TESTED_TYPES;
 
-function carryKey(os: string, f: Finding): string {
-  return `${os}|${f.rule}|${f.path ?? ''}`;
+// Moderators start tests by hand from the review queue, on the systems they pick.
+export async function startRuns(env: Env, versionId: string, fileId: string, systems: SandboxOs[]): Promise<number> {
+  const now = Date.now();
+  const created = systems.map((os) => ({ id: newId(), os }));
+  await env.DB.batch(
+    created.map((r) => env.DB.prepare("INSERT INTO sandbox_runs (id, version_id, file_id, os, status, created_at) VALUES (?, ?, ?, ?, 'queued', ?)").bind(r.id, versionId, fileId, r.os, now)),
+  );
+  for (const r of created) await dispatchRun(env, r);
+  return created.length;
 }
 
-// Called while deciding a version. Starts the tests the first time, waits while they run, and then
-// turns their findings into a rejection, review reasons, or nothing.
-export async function sandboxStage(env: Env, versionId: string, projectType: string, primaryFileId: string | null, previousVersionId: string | null): Promise<SandboxStage> {
-  if (!sandboxEnabled(env) || !TESTED_TYPES.has(projectType) || !primaryFileId) return { state: 'off' };
-  const rows = (await env.DB.prepare('SELECT * FROM sandbox_runs WHERE version_id = ? AND file_id = ?').bind(versionId, primaryFileId).all<RunRow>()).results;
-  if (!rows.length) {
-    const now = Date.now();
-    const created = SITE.sandbox.systems.filter((os) => SANDBOX_OSES.includes(os)).map((os) => ({ id: newId(), os }));
-    await env.DB.batch(
-      created.map((r) =>
-        env.DB.prepare("INSERT INTO sandbox_runs (id, version_id, file_id, os, status, created_at) VALUES (?, ?, ?, ?, 'queued', ?)").bind(r.id, versionId, primaryFileId, r.os, now),
-      ),
-    );
-    for (const r of created) await dispatchRun(env, r);
-    return { state: 'pending' };
-  }
-  if (rows.some((r) => r.status === 'queued' || r.status === 'claimed')) return { state: 'pending' };
+export type SummaryRow = Pick<RunRow, 'os' | 'status' | 'outcome' | 'summary' | 'findings' | 'error'> & { finished_at: number | null; created_at: number };
 
-  const accepted = new Set<string>();
-  if (previousVersionId) {
-    const prev = await env.DB.prepare("SELECT os, findings FROM sandbox_runs WHERE version_id = ? AND status = 'done'").bind(previousVersionId).all<{ os: string; findings: string | null }>();
-    for (const p of prev.results) for (const f of parseJson<Finding[]>(p.findings, [])) if (f.severity === 'high') accepted.add(carryKey(p.os, f));
-  }
-  const reasons: string[] = [];
-  for (const r of rows) {
-    const findings = parseJson<Finding[]>(r.findings, []);
-    const critical = findings.find((f) => f.severity === 'critical');
-    if (critical) return { state: 'done', malicious: `The behaviour test caught it: ${critical.detail}`, reasons: [] };
-    const fresh = findings.filter((f) => f.severity === 'high' && !accepted.has(carryKey(r.os, f)));
-    if (fresh.length) reasons.push(`Behaviour test: ${fresh[0].detail}${fresh.length > 1 ? ` (and ${fresh.length - 1} more)` : ''}`);
-    // Only the trusted Linux run is required; a failed run there means nobody has watched it run yet.
-    if (r.os === 'linux' && (r.status === 'failed' || r.outcome === 'error')) reasons.push(`The Linux behaviour test couldn't finish${r.error ? `: ${r.error.slice(0, 120)}` : ''}`);
-  }
-  return { state: 'done', malicious: null, reasons };
-}
-
-export type SummaryRow = Pick<RunRow, 'os' | 'status' | 'outcome' | 'summary' | 'findings' | 'error'> & { finished_at: number | null };
-
+// The latest test on each system (a moderator can run them again).
 export function summariesOf(rows: SummaryRow[], staff = true): SandboxSummary[] {
-  return rows
+  const latest = new Map<string, SummaryRow>();
+  for (const r of rows) if (!latest.has(r.os) || latest.get(r.os)!.created_at < r.created_at) latest.set(r.os, r);
+  return [...latest.values()]
     .map((r) => {
       const base = parseJson<SandboxSummary | null>(r.summary, null);
       const os = r.os as SandboxOs;

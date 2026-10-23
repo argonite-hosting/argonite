@@ -1,6 +1,6 @@
-import { useState } from 'preact/hooks';
+import { useEffect, useState } from 'preact/hooks';
 import { REPORT_REASONS, loaderLabel } from '../../../shared/taxonomy';
-import type { AuditEntry, Report, ReviewItem } from '../../../shared/types';
+import type { AuditEntry, Finding, Report, ReviewItem, Version } from '../../../shared/types';
 import { Icon } from '../components/Icon';
 import { RequireAuth } from '../components/RequireAuth';
 import { Avatar, ChannelBadge, Empty, HostList, SandboxList, Modal, NativeList, PageLoading, ProjectIcon, StatusBadge, Tabs, useAsync } from '../components/ui';
@@ -48,45 +48,200 @@ function Decision({ item, action, onClose, onDone }: { item: ReviewItem; action:
   );
 }
 
-function Queue({ status }: { status: 'review' | 'rejected' }) {
-  const { data, loading, reload } = useAsync(() => api<{ items: ReviewItem[] }>('GET', `/api/mod/queue?status=${status}`), [status]);
-  const [deciding, setDeciding] = useState<{ item: ReviewItem; action: 'approve' | 'reject' } | null>(null);
-  if (loading && !data) return <PageLoading />;
-  if (!data?.items.length) return <Empty icon="checkCircle" title={status === 'review' ? t('The review queue is empty') : t('Nothing rejected recently')} />;
+// Plain names for the behaviour tags the scanner puts on files.
+function capability(id: string): string {
+  const names: Record<string, string> = {
+    network: t('Uses the network'),
+    process_exec: t('Starts other programs'),
+    native_code: t('Ships native code'),
+    dynamic_classloading: t('Loads code at runtime'),
+    instrumentation: t('Uses Java instrumentation'),
+    crypto_decode: t('Decrypts data'),
+    credential_access: t('Reads saved logins'),
+    jar_writing: t('Writes jar files'),
+    session_token: t('Reads the Minecraft session token'),
+    class_transformer: t('Rewrites game classes'),
+    patches_loader: t('Patches the mod loader'),
+    outside_game_dir: t('Reads outside the game folder'),
+  };
+  return names[id] ?? id.replace(/_/g, ' ');
+}
+
+type Tone = 'info' | 'warning' | 'danger';
+
+// The reasons a version is waiting, from the automatic checks, as short labelled lines.
+function reasonsOf(v: Version): { tone: Tone; text: string }[] {
+  const raw = v.reviewDetail || v.statusReason || '';
+  const parts = (raw.includes('\n') ? raw.split('\n') : raw.split(/\.\s+(?=[A-Z])/)).map((s) => s.trim().replace(/\.$/, '')).filter(Boolean);
+  return parts.map((p) => {
+    if (/^First upload from this account/.test(p)) return { tone: 'info', text: t('First upload from this account') };
+    if (/^New GitHub account/.test(p)) return { tone: 'info', text: t('The uploader’s GitHub account is new') };
+    let m = /^(New sensitive behaviour since the last version|Sensitive behaviour): (.*)$/.exec(p);
+    if (m) {
+      const list = m[2].split(/,\s*/).map(capability).join(', ');
+      return { tone: 'warning', text: m[1].startsWith('New') ? t('New since the last version: {list}', { list }) : t('Sensitive behaviour: {list}', { list }) };
+    }
+    m = /^Flagged by the scanner: (.*)$/.exec(p);
+    if (m) return { tone: 'warning', text: t('Scanner: {detail}', { detail: m[1] }) };
+    if (/malware|malicious|caught it/i.test(p)) return { tone: 'danger', text: p };
+    return { tone: /^(New native|Native library changed|New links|Has more links)/.test(p) ? 'warning' : 'info', text: p };
+  });
+}
+
+const SERIOUS = new Set(['high', 'critical']);
+
+function Findings({ list }: { list: Finding[] }) {
+  const serious = list.filter((f) => SERIOUS.has(f.severity));
+  const minor = list.filter((f) => !SERIOUS.has(f.severity));
+  const row = (f: Finding, i: number) => (
+    <li key={i} class={`finding sev-${f.severity}`}>
+      <span class="badge">{t(f.severity)}</span>
+      <span>
+        {f.detail}
+        {f.path && <span class="mono finding-path"> {f.path}</span>}
+      </span>
+    </li>
+  );
   return (
-    <div class="stack">
-      {data.items.map((item) => {
-        const v = item.version;
-        return (
-          <article key={v.id} class="card review-card">
-            <header class="review-head">
-              <Link href={`/project/${item.project.slug}`} class="member">
-                <ProjectIcon src={item.project.iconUrl} name={item.project.name} size={44} />
-                <span>
-                  <strong>
-                    {item.project.name} <span class="mono muted">{v.versionNumber}</span>
-                  </strong>
-                  <span>
-                    {t('by {name}', { name: v.author.username })} · {t('uploaded {when}', { when: ago(v.createdAt) })}
-                  </span>
-                </span>
-              </Link>
-              <div class="row-actions">
-                <ChannelBadge channel={v.channel} />
-                <StatusBadge status={v.status} />
-              </div>
-            </header>
-            <div class="review-body">
-              {(v.reviewDetail || v.statusReason) && (
-                <p class="manage-reason">
-                  <Icon name="info" /> {v.reviewDetail || v.statusReason}
-                </p>
+    <>
+      {serious.length > 0 ? <ul class="finding-list">{serious.map(row)}</ul> : <p class="review-ok">{t('Nothing serious found.')}</p>}
+      {minor.length > 0 && (
+        <details class="review-more">
+          <summary>{tn(minor.length, '{n} minor note', '{n} minor notes')}</summary>
+          <ul class="finding-list">{minor.map(row)}</ul>
+        </details>
+      )}
+    </>
+  );
+}
+
+const OS_LABEL: Record<string, string> = { linux: 'Linux', windows: 'Windows', macos: 'macOS' };
+
+// Starting behaviour tests, and what they found.
+function VmTests({ v, systems, onStarted }: { v: Version; systems: string[]; onStarted: () => void }) {
+  const runs = v.sandbox ?? [];
+  const running = new Set<string>(runs.filter((r) => r.outcome === 'running').map((r) => r.os));
+  const [picked, setPicked] = useState<Set<string>>(() => new Set(runs.length ? [] : ['linux']));
+  const [busy, setBusy] = useState(false);
+  if (!systems.length) return null;
+  const toggle = (os: string) => {
+    const next = new Set(picked);
+    if (next.has(os)) next.delete(os);
+    else next.add(os);
+    setPicked(next);
+  };
+  const start = async () => {
+    setBusy(true);
+    try {
+      await api('POST', `/api/mod/versions/${v.id}/sandbox`, { systems: [...picked].filter((os) => !running.has(os)) });
+      toast('success', t('Tests started. They usually take 10 to 40 minutes.'));
+      setPicked(new Set());
+      onStarted();
+    } catch (e) {
+      errorToast(e);
+    } finally {
+      setBusy(false);
+    }
+  };
+  const choosable = [...picked].filter((os) => !running.has(os));
+  return (
+    <section class="review-section">
+      <h3>{t('Behaviour tests')}</h3>
+      {runs.length === 0 && <p class="field-hint">{t('Run the file inside real Minecraft on a fresh machine, with the network cut off and bait files planted, to see what it does.')}</p>}
+      {runs.length > 0 && <SandboxList runs={runs} detailed hideTitle />}
+      <div class="vm-picker">
+        {systems.map((os) => (
+          <label key={os} class={`vm-option${running.has(os) ? ' is-running' : ''}`}>
+            <input type="checkbox" checked={picked.has(os) || running.has(os)} disabled={running.has(os) || busy} onChange={() => toggle(os)} />
+            <span>{OS_LABEL[os] ?? os}</span>
+            {running.has(os) && <span class="spinner spinner-sm" aria-label={t('Running')} />}
+          </label>
+        ))}
+        <button type="button" class="btn btn-sm" disabled={busy || !choosable.length} onClick={start}>
+          <Icon name="shield" /> {runs.length ? t('Test again') : t('Test on VMs')}
+        </button>
+      </div>
+    </section>
+  );
+}
+
+function ReviewCard({ item, status, systems, onDecide, reload }: { item: ReviewItem; status: 'review' | 'rejected'; systems: string[]; onDecide: (action: 'approve' | 'reject') => void; reload: () => void }) {
+  const v = item.version;
+  const reasons = reasonsOf(v);
+  const findings = Object.values(v.scans ?? {}).flatMap((s) => s.findings ?? []);
+  const capabilities = [...new Set(Object.values(v.scans ?? {}).flatMap((s) => s.capabilities ?? []))];
+  const natives = Object.values(v.scans ?? {}).flatMap((x) => x.natives ?? []);
+  const hosts = [...new Set(Object.values(v.scans ?? {}).flatMap((x) => x.hosts ?? []))].sort();
+  const testFindings = (v.sandbox ?? []).flatMap((r) => r.findings);
+  const level: Tone =
+    findings.some((f) => f.severity === 'critical') || testFindings.some((f) => f.severity === 'critical')
+      ? 'danger'
+      : reasons.some((r) => r.tone !== 'info') || findings.some((f) => f.severity === 'high') || testFindings.some((f) => f.severity === 'high')
+        ? 'warning'
+        : 'info';
+  const verdict = v.scan?.verdict;
+  return (
+    <article class={`card review-card review-${level}`}>
+      <header class="review-head">
+        <Link href={`/project/${item.project.slug}`} class="member">
+          <ProjectIcon src={item.project.iconUrl} name={item.project.name} size={44} />
+          <span>
+            <strong>
+              {item.project.name} <span class="mono muted">{v.versionNumber}</span>
+            </strong>
+            <span>
+              {t('by {name}', { name: v.author.username })} · {t('uploaded {when}', { when: ago(v.createdAt) })}
+            </span>
+          </span>
+        </Link>
+        <div class="row-actions">
+          <span class={`badge review-level review-level-${level}`}>{level === 'danger' ? t('Signs of malware') : level === 'warning' ? t('Needs a closer look') : t('Routine check')}</span>
+          <ChannelBadge channel={v.channel} />
+          <StatusBadge status={v.status} />
+        </div>
+      </header>
+      <div class="review-body">
+        {reasons.length > 0 && (
+          <section class="review-section">
+            <h3>{status === 'review' ? t('Why it’s waiting') : t('Why it was rejected')}</h3>
+            <ul class="review-reasons">
+              {reasons.map((r, i) => (
+                <li key={i} class={`review-reason tone-${r.tone}`}>
+                  <Icon name={r.tone === 'info' ? 'info' : 'alert'} />
+                  <span>{r.text}</span>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
+        <section class="review-section">
+          <h3>{t('File')}</h3>
+          <p class="review-file">
+            <strong class="mono">{v.file ? v.file.filename : t('No fingerprint')}</strong>
+            {v.file && <span class="muted"> · {bytes(v.file.size)}</span>}
+            <span class="muted"> · {v.loaders.map(loaderLabel).join(', ')}</span>
+            {v.gameVersions.length > 0 && <span class="muted"> · {v.gameVersions.slice(0, 3).join(', ')}{v.gameVersions.length > 3 ? '…' : ''}</span>}
+          </p>
+          <h3>{t('Scan')}</h3>
+          <p class="review-verdict">
+            <span class={`badge verdict-${verdict ?? 'none'}`}>{verdict ? t(verdict) : t('pending')}</span>
+          </p>
+          <Findings list={findings} />
+          {(capabilities.length > 0 || natives.length > 0 || hosts.length > 0 || v.file) && (
+            <details class="review-more">
+              <summary>{t('Details')}</summary>
+              {capabilities.length > 0 && (
+                <div class="chips">
+                  {capabilities.map((c) => (
+                    <span key={c} class="chip" title={c}>
+                      {capability(c)}
+                    </span>
+                  ))}
+                </div>
               )}
+              <NativeList natives={natives} />
+              <HostList hosts={hosts} />
               <dl class="kv review-kv">
-                <dt>{t('File')}</dt>
-                <dd>{v.file ? `${v.file.filename} · ${bytes(v.file.size)}` : t('No fingerprint')}</dd>
-                <dt>{t('Loaders')}</dt>
-                <dd>{v.loaders.map(loaderLabel).join(', ')}</dd>
                 <dt>{t('Engines')}</dt>
                 <dd>{v.scan?.engines.join(', ') || '—'}</dd>
                 {v.file && (
@@ -96,52 +251,49 @@ function Queue({ status }: { status: 'review' | 'rejected' }) {
                   </>
                 )}
               </dl>
-              {v.scan && v.scan.capabilities.length > 0 && (
-                <div class="chips">
-                  {v.scan.capabilities.map((c) => (
-                    <span key={c} class="chip">
-                      {c.replace(/_/g, ' ')}
-                    </span>
-                  ))}
-                </div>
-              )}
-              <NativeList natives={Object.values(v.scans ?? {}).flatMap((x) => x.natives ?? [])} />
-              <HostList hosts={[...new Set(Object.values(v.scans ?? {}).flatMap((x) => x.hosts ?? []))].sort()} />
-              {v.scan && v.scan.findings.length > 0 && (
-                <ul class="finding-list">
-                  {v.scan.findings.map((f, i) => (
-                    <li key={i} class={`finding sev-${f.severity}`}>
-                      <span class="badge">{f.severity}</span>
-                      <span>
-                        {f.detail}
-                        {f.path && <span class="mono finding-path"> {f.path}</span>}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              )}
-              <SandboxList runs={v.sandbox} detailed />
-            </div>
-            <footer class="review-foot">
-              {v.releaseUrl && (
-                <a class="btn btn-ghost btn-sm" href={v.releaseUrl} target="_blank" rel="noopener noreferrer">
-                  <Icon name="github" /> {t('Release')}
-                </a>
-              )}
-              {status === 'review' ? (
-                <>
-                  <button type="button" class="btn btn-danger-soft btn-sm" onClick={() => setDeciding({ item, action: 'reject' })}>
-                    {t('Reject')}
-                  </button>
-                  <button type="button" class="btn btn-primary btn-sm" disabled={!v.file} onClick={() => setDeciding({ item, action: 'approve' })}>
-                    {t('Approve')}
-                  </button>
-                </>
-              ) : null}
-            </footer>
-          </article>
-        );
-      })}
+            </details>
+          )}
+        </section>
+        <VmTests v={v} systems={systems} onStarted={reload} />
+      </div>
+      <footer class="review-foot">
+        {v.releaseUrl && (
+          <a class="btn btn-ghost btn-sm" href={v.releaseUrl} target="_blank" rel="noopener noreferrer">
+            <Icon name="github" /> {t('Release')}
+          </a>
+        )}
+        {status === 'review' ? (
+          <>
+            <button type="button" class="btn btn-danger-soft btn-sm" onClick={() => onDecide('reject')}>
+              {t('Reject')}
+            </button>
+            <button type="button" class="btn btn-primary btn-sm" disabled={!v.file} onClick={() => onDecide('approve')}>
+              {t('Approve')}
+            </button>
+          </>
+        ) : null}
+      </footer>
+    </article>
+  );
+}
+
+function Queue({ status }: { status: 'review' | 'rejected' }) {
+  const { data, loading, reload } = useAsync(() => api<{ items: ReviewItem[]; sandboxSystems?: string[] }>('GET', `/api/mod/queue?status=${status}`), [status]);
+  const [deciding, setDeciding] = useState<{ item: ReviewItem; action: 'approve' | 'reject' } | null>(null);
+  const anyRunning = !!data?.items.some((i) => (i.version.sandbox ?? []).some((r) => r.outcome === 'running'));
+  // While tests run, refresh quietly so results show up without reloading the page.
+  useEffect(() => {
+    if (!anyRunning) return;
+    const id = setInterval(reload, 30_000);
+    return () => clearInterval(id);
+  }, [anyRunning, reload]);
+  if (loading && !data) return <PageLoading />;
+  if (!data?.items.length) return <Empty icon="checkCircle" title={status === 'review' ? t('The review queue is empty') : t('Nothing rejected recently')} />;
+  return (
+    <div class="stack">
+      {data.items.map((item) => (
+        <ReviewCard key={item.version.id} item={item} status={status} systems={data.sandboxSystems ?? []} onDecide={(action) => setDeciding({ item, action })} reload={reload} />
+      ))}
       {deciding && <Decision item={deciding.item} action={deciding.action} onClose={() => setDeciding(null)} onDone={reload} />}
     </div>
   );

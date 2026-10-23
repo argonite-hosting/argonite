@@ -319,7 +319,7 @@ export async function loadVersions(env: Env, q: VersionQuery): Promise<Version[]
   ]);
   const sandboxRows = q.includeScan
     ? (
-        await env.DB.prepare(`SELECT version_id, file_id, os, status, outcome, summary, findings, error, finished_at FROM sandbox_runs WHERE version_id IN (${scope})`)
+        await env.DB.prepare(`SELECT version_id, file_id, os, status, outcome, summary, findings, error, finished_at, created_at FROM sandbox_runs WHERE version_id IN (${scope})`)
           .bind(...binds)
           .all<SummaryRow & { version_id: string; file_id: string }>()
       ).results

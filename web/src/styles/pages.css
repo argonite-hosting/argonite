@@ -1839,3 +1839,119 @@ button.gallery-item:hover {
 .dropzone-error {
   margin-top: -4px;
 }
+
+/* Review queue: sections, reasons and behaviour tests */
+.review-card.review-danger {
+  border-left: 3px solid var(--danger);
+}
+.review-card.review-warning {
+  border-left: 3px solid var(--warning);
+}
+.review-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.review-section + .review-section {
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+.review-section h3 {
+  margin: 0;
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-2);
+}
+.review-reasons {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.review-reason {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: var(--fs-sm);
+}
+.review-reason svg {
+  flex: none;
+  width: 15px;
+  height: 15px;
+  margin-top: 3px;
+}
+.review-reason.tone-info svg {
+  color: var(--text-2);
+}
+.review-reason.tone-warning svg {
+  color: var(--warning);
+}
+.review-reason.tone-danger {
+  color: var(--danger);
+}
+.review-file,
+.review-verdict {
+  margin: 0;
+  font-size: var(--fs-sm);
+  overflow-wrap: anywhere;
+}
+.review-ok {
+  margin: 0;
+  color: var(--text-2);
+  font-size: var(--fs-sm);
+}
+.review-more > summary {
+  cursor: pointer;
+  color: var(--text-2);
+  font-size: var(--fs-sm);
+  width: fit-content;
+}
+.review-more[open] > summary {
+  margin-bottom: 8px;
+}
+.review-level-danger,
+.verdict-malicious {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+.review-level-warning,
+.verdict-suspicious {
+  background: var(--warning-soft);
+  color: var(--warning);
+}
+.review-level-info,
+.verdict-clean {
+  background: var(--success-soft);
+  color: var(--success);
+}
+.vm-picker {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
+  padding: 10px 12px;
+  border-radius: var(--radius);
+  background: var(--surface-2);
+}
+.vm-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--fs-sm);
+  cursor: pointer;
+}
+.vm-option.is-running {
+  color: var(--text-2);
+  cursor: default;
+}
+.vm-picker .btn {
+  margin-left: auto;
+}
+.spinner-sm {
+  width: 12px;
+  height: 12px;
+  border-width: 2px;
+}

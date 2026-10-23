@@ -10,7 +10,6 @@ import { HttpError, badRequest, json, readTextLimited } from '../lib/http';
 import { goLive } from '../lib/publish';
 import type { Ctx, Router } from '../lib/router';
 import { scanKey } from '../lib/runtime';
-import { sandboxStage } from '../lib/sandbox';
 import type { Env } from '../env';
 
 const MAX_SKEW_MS = 5 * 60 * 1000;
@@ -350,26 +349,8 @@ export async function decideVersion(env: Env, versionId: string): Promise<string
     return 'rejected';
   }
 
-  const previous = await previousLive(env, v.project_id, v.id);
-  const prevFiles = previous.files;
-
-  // Behaviour tests run once the static scan found nothing malicious, and the version waits for them.
-  const sandbox = await sandboxStage(env, v.id, v.project_type, all.find((f) => f.kind === 'primary')?.id ?? null, previous.id);
-  if (sandbox.state === 'pending') return 'scanning';
-  if (sandbox.state === 'done' && sandbox.malicious) {
-    await env.DB.batch([
-      env.DB.prepare("UPDATE versions SET status = 'rejected', status_reason = ?, review_detail = ? WHERE id = ? AND status = 'scanning'").bind(
-        'Our checks found malicious behaviour in this version.',
-        sandbox.malicious.slice(0, 2000),
-        v.id,
-      ),
-      audit(env, null, 'sandbox.malicious', 'version', v.id, { reason: sandbox.malicious }),
-    ]);
-    return 'rejected';
-  }
-
+  const prevFiles = (await previousLive(env, v.project_id, v.id)).files;
   const reasons: string[] = [
-    ...(sandbox.state === 'done' ? sandbox.reasons : []),
     ...nativeChanges(prevFiles, all.flatMap((f) => parseJson<NativeFile[]>(f.natives, []))),
     ...linkChanges(prevFiles, all.map((f) => parseJson<LinkList>(f.links, { links: [], complete: true }))),
   ];
@@ -395,7 +376,7 @@ export async function decideVersion(env: Env, versionId: string): Promise<string
   }
   if (reasons.length) {
     await env.DB.batch([
-      env.DB.prepare("UPDATE versions SET status = 'review', status_reason = NULL, review_detail = ? WHERE id = ? AND status = 'scanning'").bind(reasons.join('. ').slice(0, 2000), v.id),
+      env.DB.prepare("UPDATE versions SET status = 'review', status_reason = NULL, review_detail = ? WHERE id = ? AND status = 'scanning'").bind(reasons.join('\n').slice(0, 2000), v.id),
       audit(env, null, 'scan.review', 'version', v.id, { reasons }),
     ]);
     return 'review';

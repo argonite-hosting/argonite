@@ -10,7 +10,9 @@ import { audit } from '../lib/guard';
 import { HttpError, badRequest, json, readTextLimited } from '../lib/http';
 import { type ActionsClaims, verifyActionsToken } from '../lib/oidc';
 import type { Ctx, Router } from '../lib/router';
-import { MAX_DISPATCHES, MAX_RUN_ATTEMPTS, type RunRow, SANDBOX_OSES, type SandboxOs, cleanReport, dispatchRun, judge, sandboxEnabled, summaryOf, workflowFor } from '../lib/sandbox';
+import { MAX_DISPATCHES, MAX_RUN_ATTEMPTS, type RunRow, SANDBOX_OSES, type SandboxOs, TESTABLE_TYPES, cleanReport, dispatchRun, judge, sandboxEnabled, startRuns, summaryOf, workflowFor } from '../lib/sandbox';
+import { assertSameSite } from '../lib/guard';
+import { requireModerator } from '../lib/session';
 import { decideVersion } from './scanner';
 
 const CLAIM_TIMEOUT_MS = 120 * 60 * 1000;
@@ -105,7 +107,7 @@ async function claim(ctx: Ctx): Promise<Response> {
   if (!run) return json({ run: null });
 
   const c = await runContext(ctx.env, run);
-  if (!c || c.version_status !== 'scanning' || !c.sha256 || c.asset_id === null) {
+  if (!c || c.version_status === 'deleted' || !c.sha256 || c.asset_id === null) {
     await finishRun(ctx.env, run, 'version no longer waiting for tests');
     return json({ run: null });
   }
@@ -232,12 +234,11 @@ async function result(ctx: Ctx): Promise<Response> {
 export async function sweepSandbox(env: Env): Promise<void> {
   const now = Date.now();
   const settle = new Set<string>();
-  // Open runs are given up only when tests are switched off, or their version stopped waiting for them
-  // (a moderator rejected it, the author deleted it). Running tests are left alone.
+  // Open runs are given up only when tests are switched off or their version was deleted.
   const switchedOff = sandboxEnabled(env) ? 0 : 1;
   const abandoned = await env.DB.prepare(
     `SELECT id, version_id FROM sandbox_runs WHERE status IN ('queued', 'claimed')
-       AND (?1 = 1 OR version_id IN (SELECT id FROM versions WHERE status != 'scanning'))`,
+       AND (?1 = 1 OR version_id IN (SELECT id FROM versions WHERE status = 'deleted'))`,
   )
     .bind(switchedOff)
     .all<{ id: string; version_id: string }>();
@@ -273,7 +274,35 @@ export async function sweepSandbox(env: Env): Promise<void> {
   for (const versionId of settle) await decideWhenSettled(env, versionId).catch((e) => console.error(JSON.stringify({ cron: 'sandbox', error: String(e) })));
 }
 
+// A moderator asks for the version's main file to be run on some or all of the test machines.
+async function requestTests(ctx: Ctx): Promise<Response> {
+  assertSameSite(ctx);
+  const mod = await requireModerator(ctx);
+  if (!isId(ctx.params.id)) throw badRequest('Invalid version.');
+  if (!sandboxEnabled(ctx.env)) throw new HttpError(409, 'sandbox_off', 'Behaviour tests are not set up on this site.');
+  const body = await readBody(ctx);
+  const wanted = [...new Set(Array.isArray(body.systems) ? body.systems : [])].filter((x): x is SandboxOs => SANDBOX_OSES.includes(x as SandboxOs) && SITE.sandbox.systems.includes(x as SandboxOs));
+  if (!wanted.length) throw badRequest('Pick at least one system.');
+  const v = await ctx.env.DB.prepare(
+    `SELECT v.id, v.status, p.type, f.id AS file_id, f.sha256 FROM versions v JOIN projects p ON p.id = v.project_id
+     LEFT JOIN files f ON f.version_id = v.id AND f.kind = 'primary' WHERE v.id = ?`,
+  )
+    .bind(ctx.params.id)
+    .first<{ id: string; status: string; type: string; file_id: string | null; sha256: string | null }>();
+  if (!v || v.status === 'deleted') throw new HttpError(404, 'not_found', 'Version not found.');
+  if (!TESTABLE_TYPES.has(v.type)) throw new HttpError(409, 'not_testable', 'Only mods, plugins and modpacks can be tested.');
+  if (!v.file_id || !v.sha256) throw new HttpError(409, 'not_scanned', 'The file hasn’t finished its scan yet.');
+  const busy = await ctx.env.DB.prepare("SELECT os FROM sandbox_runs WHERE version_id = ? AND status IN ('queued', 'claimed')").bind(v.id).all<{ os: SandboxOs }>();
+  const running = new Set(busy.results.map((r) => r.os));
+  const systems = wanted.filter((os) => !running.has(os));
+  if (!systems.length) throw new HttpError(409, 'already_running', 'Those tests are already running.');
+  await startRuns(ctx.env, v.id, v.file_id, systems);
+  await audit(ctx.env, mod.id, 'sandbox.requested', 'version', v.id, { systems }).run();
+  return json({ started: systems });
+}
+
 export function sandboxRoutes(r: Router): void {
+  r.post('/api/mod/versions/:id/sandbox', requestTests);
   r.post('/internal/sandbox/claim', claim);
   r.post('/internal/sandbox/result', result);
   r.post('/internal/sandbox/curseforge', curseforgeFiles);

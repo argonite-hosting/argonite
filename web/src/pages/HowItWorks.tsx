@@ -15,7 +15,7 @@ function flow(): { icon: IconName; title: string; body: string }[] {
       icon: 'shield',
       title: t('2. We scan the exact bytes'),
       body: t(
-        'Every file is fetched through a short-lived private link and scanned for malware, including every jar packed inside it. Mods, plugins and modpacks are also tried out in an isolated environment before they go live. Resource packs, data packs and shaders are rejected outright if they contain any code.',
+        'Every file is fetched through a short-lived private link and scanned for malware, including every jar packed inside it. When something looks off, moderators can also try a mod, plugin or modpack out in an isolated environment. Resource packs, data packs and shaders are rejected outright if they contain any code.',
       ),
     },
     {

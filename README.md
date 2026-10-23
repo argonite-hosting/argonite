@@ -5,7 +5,7 @@ A Minecraft content repository where every download is verified. Mods, plugins, 
 ## What's included
 
 - **Publishing**: versions with several files each, one jar listed for several loaders, featured versions, dependencies and changelogs. Releases stay drafts on GitHub until every file passes its scan.
-- **Behaviour tests**: mods, plugins and modpacks are also run inside real Minecraft on fresh Linux, Windows and macOS machines with the network cut off and bait files planted, before they go live.
+- **Behaviour tests**: moderators can run a mod, plugin or modpack inside real Minecraft on fresh Linux, Windows and macOS machines, with the network cut off and bait files planted, to see what it does.
 - **Automation**: auto-publish from GitHub releases, and scoped API tokens for publishing from CI.
 - **Modpacks**: every file a pack installs is checked, with a public contents list.
 - **Teams**: project members and organisations with per-member permissions.
