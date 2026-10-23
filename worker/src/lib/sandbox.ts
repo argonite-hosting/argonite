@@ -57,8 +57,10 @@ export async function dispatchRun(env: Env, run: Pick<RunRow, 'id' | 'os'>): Pro
       headers: ghHeaders(env.SANDBOX_DISPATCH_TOKEN, { 'Content-Type': 'application/json' }),
       body: JSON.stringify({ event_type: `sandbox-${run.os}`, client_payload: { run: run.id, nonce } }),
     });
+    if (res.status !== 204) console.error(JSON.stringify({ dispatch: `sandbox-${run.os}`, status: res.status, body: (await res.text()).slice(0, 300) }));
     return res.status === 204;
-  } catch {
+  } catch (e) {
+    console.error(JSON.stringify({ dispatch: `sandbox-${run.os}`, error: String(e) }));
     return false;
   }
 }

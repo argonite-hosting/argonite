@@ -209,13 +209,17 @@ export function repoPath(repo: Pick<GitHubRepo, 'full_name'>): string {
 }
 
 export async function dispatchScan(env: Env, jobId?: string): Promise<boolean> {
-  if (!env.SCANNER_DISPATCH_TOKEN) return false;
+  if (!env.SCANNER_DISPATCH_TOKEN) {
+    console.error(JSON.stringify({ dispatch: 'scan', error: 'SCANNER_DISPATCH_TOKEN is not set' }));
+    return false;
+  }
   const [owner, repo] = SITE.github.sourceRepo.split('/');
   const res = await fetch(`${githubApi()}/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/dispatches`, {
     method: 'POST',
     headers: ghHeaders(env.SCANNER_DISPATCH_TOKEN, { 'Content-Type': 'application/json' }),
     body: JSON.stringify({ event_type: 'argonite-scan', client_payload: jobId ? { job_id: jobId } : {} }),
   });
+  if (res.status !== 204) console.error(JSON.stringify({ dispatch: 'scan', status: res.status, body: (await res.text()).slice(0, 300) }));
   return res.status === 204;
 }
 
