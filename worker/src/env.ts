@@ -8,6 +8,7 @@ export interface Env {
   URLHAUS_KEY?: string;
   SCANNER_HMAC_SECRET: string;
   SCANNER_DISPATCH_TOKEN: string;
+  SANDBOX_DISPATCH_TOKEN?: string;
   TOKEN_ENCRYPTION_KEY: string;
   VISITOR_SALT: string;
   TURNSTILE_SECRET?: string;

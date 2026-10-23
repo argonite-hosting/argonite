@@ -27,3 +27,7 @@ export function rawBase(): string {
 export function githubAppId(): number {
   return SITE.github.appId;
 }
+
+export function actionsJwksUrl(): string {
+  return 'https://token.actions.githubusercontent.com/.well-known/jwks';
+}

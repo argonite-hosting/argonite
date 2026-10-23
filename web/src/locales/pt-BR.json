@@ -1177,5 +1177,20 @@
   "{user} commented on {project}": "{user} comentou em {project}",
   "{user} replied to you": "{user} respondeu a você",
   "{what} copied": "{what} copiado",
-  "{what} removed": "{what} removido"
+  "{what} removed": "{what} removido",
+  "Behaviour tests": "Testes de comportamento",
+  "Running": "Em andamento",
+  "Tested": "Testado",
+  "Not tested": "Não testado",
+  "Didn’t finish": "Não terminou",
+  "Server started": "Servidor iniciado",
+  "Server didn’t start": "O servidor não iniciou",
+  "Client joined": "O cliente entrou",
+  "Client started": "Cliente iniciado",
+  "Client not run": "Cliente não executado",
+  "Nothing suspicious happened.": "Nada suspeito aconteceu.",
+  "{n} dependencies": {
+    "one": "{n} dependência",
+    "other": "{n} dependências"
+  }
 }

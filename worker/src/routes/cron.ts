@@ -8,6 +8,7 @@ import { moveUnlistedOffGitHub } from './userdata';
 import { audit } from '../lib/guard';
 import { dispatchScan, gh, repoPath } from '../lib/github';
 import { goLive } from '../lib/publish';
+import { sweepSandbox } from './sandbox';
 import { MAX_ATTEMPTS } from './scanner';
 import { pingDue } from './servers';
 
@@ -111,6 +112,8 @@ async function housekeeping(env: Env): Promise<void> {
     env.DB.prepare('DELETE FROM download_marks WHERE day < ?').bind(new Date(now - 3 * 86_400_000).toISOString().slice(0, 10)),
     env.DB.prepare('DELETE FROM webhook_deliveries WHERE received_at < ?').bind(now - 7 * 86_400_000),
     env.DB.prepare("DELETE FROM scan_jobs WHERE status IN ('done', 'failed') AND finished_at < ?").bind(now - 30 * 86_400_000),
+    // Full reports are kept for a while for moderators; the findings and summary stay with the version.
+    env.DB.prepare('UPDATE sandbox_runs SET report = NULL WHERE report IS NOT NULL AND finished_at < ?').bind(now - 90 * 86_400_000),
   ]);
 }
 
@@ -129,6 +132,7 @@ export async function runCron(cron: string, env: Env, scheduledTime = Date.now()
   }
   if (new Date(scheduledTime).getUTCMinutes() % 10 >= 2) return;
   await sweepScans(env);
+  await sweepSandbox(env).catch((e) => console.error(JSON.stringify({ cron: 'sandbox', error: String(e) })));
   await sweepAbandonedUploads(env);
   await hashStoredImages(env).catch((e) => console.error(JSON.stringify({ cron: 'images', error: String(e) })));
   await refreshLinkChecks(env).catch((e) => console.error(JSON.stringify({ cron: 'links', error: String(e) })));

@@ -34,5 +34,14 @@
   "review": {
     "firstUploadsNeedReview": 1,
     "minGithubAccountAgeDays": 30
+  },
+  "sandbox": {
+    "repo": "argonite-security/sandbox",
+    "ownerId": 346797373,
+    "systems": [
+      "linux",
+      "windows",
+      "macos"
+    ]
   }
 }

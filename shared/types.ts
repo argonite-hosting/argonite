@@ -151,6 +151,21 @@ export interface ScanSummary {
   hosts: string[];
 }
 
+// One behaviour test: the file run inside real Minecraft on a fresh machine with the network cut off.
+export interface SandboxSummary {
+  os: 'linux' | 'windows' | 'macos';
+  outcome: 'running' | 'tested' | 'unsupported' | 'error';
+  note: string | null;
+  gameVersion: string | null;
+  loader: string | null;
+  server: boolean;
+  client: boolean;
+  joined: boolean;
+  dependencies: number;
+  findings: Finding[];
+  finishedAt: number | null;
+}
+
 export interface Version {
   id: string;
   projectId: string;
@@ -173,6 +188,7 @@ export interface Version {
   releaseUrl: string | null;
   scan?: ScanSummary;
   scans?: Record<string, ScanSummary & { filename: string; kind: FileKind; uploaded: boolean }>;
+  sandbox?: SandboxSummary[];
   publishPending?: boolean;
 }
 

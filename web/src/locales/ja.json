@@ -1167,5 +1167,19 @@
   "{user} commented on {project}": "{user} が {project} にコメントしました",
   "{user} replied to you": "{user} があなたに返信しました",
   "{what} copied": "{what}をコピーしました",
-  "{what} removed": "{what}を削除しました"
+  "{what} removed": "{what}を削除しました",
+  "Behaviour tests": "動作テスト",
+  "Running": "実行中",
+  "Tested": "テスト済み",
+  "Not tested": "未テスト",
+  "Didn’t finish": "完了せず",
+  "Server started": "サーバー起動",
+  "Server didn’t start": "サーバー起動せず",
+  "Client joined": "クライアント接続",
+  "Client started": "クライアント起動",
+  "Client not run": "クライアント未実行",
+  "Nothing suspicious happened.": "不審な動きはありませんでした。",
+  "{n} dependencies": {
+    "other": "依存関係 {n} 件"
+  }
 }

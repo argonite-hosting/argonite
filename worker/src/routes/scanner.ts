@@ -10,6 +10,8 @@ import { HttpError, badRequest, json, readTextLimited } from '../lib/http';
 import { goLive } from '../lib/publish';
 import type { Ctx, Router } from '../lib/router';
 import { scanKey } from '../lib/runtime';
+import { sandboxStage } from '../lib/sandbox';
+import type { Env } from '../env';
 
 const MAX_SKEW_MS = 5 * 60 * 1000;
 const STALE_CLAIM_MS = 30 * 60 * 1000;
@@ -248,14 +250,17 @@ interface PrevFile {
 }
 
 // The files of the project's most recent live version: what was last approved or passed.
-async function previousLive(ctx: Ctx, projectId: string, versionId: string): Promise<PrevFile[]> {
-  const rows = await ctx.env.DB.prepare(
-    `SELECT f.kind, f.findings, f.natives, f.links, f.capabilities FROM files f WHERE f.version_id = (
-       SELECT id FROM versions WHERE project_id = ? AND status = 'live' AND id != ? ORDER BY published_at DESC LIMIT 1)`,
-  )
+async function previousLive(env: Env, projectId: string, versionId: string): Promise<{ id: string | null; files: PrevFile[] }> {
+  const prev = await env.DB.prepare("SELECT id FROM versions WHERE project_id = ? AND status = 'live' AND id != ? ORDER BY published_at DESC LIMIT 1")
     .bind(projectId, versionId)
+    .first<{ id: string }>();
+  if (!prev) return { id: null, files: [] };
+  const rows = await env.DB.prepare(
+    'SELECT f.kind, f.findings, f.natives, f.links, f.capabilities FROM files f WHERE f.version_id = ?',
+  )
+    .bind(prev.id)
     .all<PrevFile>();
-  return rows.results;
+  return { id: prev.id, files: rows.results };
 }
 
 interface LinkList {
@@ -317,17 +322,17 @@ function acceptedFindings(prev: PrevFile[]): Set<string> {
 
 // The version is decided once every file has a fingerprint: any malicious file rejects it, any reason
 // to look closer sends it to review, otherwise it goes live (and its GitHub release gets published).
-async function decideVersion(ctx: Ctx, versionId: string): Promise<string> {
-  const files = await ctx.env.DB.prepare('SELECT id, kind, filename, sha256, verdict, findings, capabilities, natives, links FROM files WHERE version_id = ?')
+export async function decideVersion(env: Env, versionId: string): Promise<string> {
+  const files = await env.DB.prepare('SELECT id, kind, filename, sha256, verdict, findings, capabilities, natives, links FROM files WHERE version_id = ?')
     .bind(versionId)
     .all<{ id: string; kind: string; filename: string; sha256: string | null; verdict: string | null; findings: string | null; capabilities: string | null; natives: string | null; links: string | null }>();
   if (files.results.some((f) => !f.sha256)) return 'scanning';
-  const v = await ctx.env.DB.prepare(
-    `SELECT v.id, v.status, v.project_id, v.author_id, u.approved_uploads, u.github_created_at
-     FROM versions v JOIN users u ON u.id = v.author_id WHERE v.id = ?`,
+  const v = await env.DB.prepare(
+    `SELECT v.id, v.status, v.project_id, v.author_id, u.approved_uploads, u.github_created_at, p.type AS project_type
+     FROM versions v JOIN users u ON u.id = v.author_id JOIN projects p ON p.id = v.project_id WHERE v.id = ?`,
   )
     .bind(versionId)
-    .first<{ id: string; status: string; project_id: string; author_id: string; approved_uploads: number; github_created_at: number }>();
+    .first<{ id: string; status: string; project_id: string; author_id: string; approved_uploads: number; github_created_at: number; project_type: string }>();
   if (!v || v.status !== 'scanning') return v?.status ?? 'deleted';
 
   const all = files.results.map((f) => ({ ...f, list: parseJson<Finding[]>(f.findings, []) }));
@@ -335,15 +340,29 @@ async function decideVersion(ctx: Ctx, versionId: string): Promise<string> {
   if (bad) {
     const top = bad.list.find((x) => x.severity === 'critical') ?? bad.list[0];
     const reason = top?.rule.startsWith('policy.') ? top.detail : `The scanner detected malware in ${bad.filename}.`;
-    await ctx.env.DB.batch([
-      ctx.env.DB.prepare("UPDATE versions SET status = 'rejected', status_reason = ? WHERE id = ? AND status = 'scanning'").bind(reason.slice(0, 500), v.id),
-      audit(ctx.env, null, 'scan.malicious', 'version', v.id, { file: bad.id, findings: bad.list.slice(0, 10) }),
+    await env.DB.batch([
+      env.DB.prepare("UPDATE versions SET status = 'rejected', status_reason = ? WHERE id = ? AND status = 'scanning'").bind(reason.slice(0, 500), v.id),
+      audit(env, null, 'scan.malicious', 'version', v.id, { file: bad.id, findings: bad.list.slice(0, 10) }),
     ]);
     return 'rejected';
   }
 
-  const prevFiles = await previousLive(ctx, v.project_id, v.id);
+  const previous = await previousLive(env, v.project_id, v.id);
+  const prevFiles = previous.files;
+
+  // Behaviour tests run once the static scan found nothing malicious, and the version waits for them.
+  const sandbox = await sandboxStage(env, v.id, v.project_type, all.find((f) => f.kind === 'primary')?.id ?? null, previous.id);
+  if (sandbox.state === 'pending') return 'scanning';
+  if (sandbox.state === 'done' && sandbox.malicious) {
+    await env.DB.batch([
+      env.DB.prepare("UPDATE versions SET status = 'rejected', status_reason = ? WHERE id = ? AND status = 'scanning'").bind(sandbox.malicious.slice(0, 500), v.id),
+      audit(env, null, 'sandbox.malicious', 'version', v.id, { reason: sandbox.malicious }),
+    ]);
+    return 'rejected';
+  }
+
   const reasons: string[] = [
+    ...(sandbox.state === 'done' ? sandbox.reasons : []),
     ...nativeChanges(prevFiles, all.flatMap((f) => parseJson<NativeFile[]>(f.natives, []))),
     ...linkChanges(prevFiles, all.map((f) => parseJson<LinkList>(f.links, { links: [], complete: true }))),
   ];
@@ -368,16 +387,16 @@ async function decideVersion(ctx: Ctx, versionId: string): Promise<string> {
     reasons.push(`Sensitive behaviour: ${risky.join(', ')}`);
   }
   if (reasons.length) {
-    await ctx.env.DB.batch([
-      ctx.env.DB.prepare("UPDATE versions SET status = 'review', status_reason = ? WHERE id = ? AND status = 'scanning'").bind(reasons.join('. ').slice(0, 500), v.id),
-      audit(ctx.env, null, 'scan.review', 'version', v.id, { reasons }),
+    await env.DB.batch([
+      env.DB.prepare("UPDATE versions SET status = 'review', status_reason = ? WHERE id = ? AND status = 'scanning'").bind(reasons.join('. ').slice(0, 500), v.id),
+      audit(env, null, 'scan.review', 'version', v.id, { reasons }),
     ]);
     return 'review';
   }
   // Two files can finish at the same moment; only one of them gets to publish.
-  const lock = await ctx.env.DB.prepare("UPDATE versions SET publish_pending = 2 WHERE id = ? AND status = 'scanning' AND publish_pending = 0").bind(v.id).run();
+  const lock = await env.DB.prepare("UPDATE versions SET publish_pending = 2 WHERE id = ? AND status = 'scanning' AND publish_pending = 0").bind(v.id).run();
   if (!lock.meta.changes) return 'scanning';
-  return (await goLive(ctx.env, v.id, null, 'scan.clean')) === 'live' ? 'live' : 'unavailable';
+  return (await goLive(env, v.id, null, 'scan.clean')) === 'live' ? 'live' : 'unavailable';
 }
 
 async function result(ctx: Ctx): Promise<Response> {
@@ -510,7 +529,7 @@ async function result(ctx: Ctx): Promise<Response> {
     ).bind(sha1, sha256, sha512, signature, now, verdict, JSON.stringify(findings), JSON.stringify(capabilities), JSON.stringify(engines), metadata, contents, JSON.stringify(natives), JSON.stringify(hosts), JSON.stringify(links), c.file_id),
     finish('done'),
   ]);
-  const status = await decideVersion(ctx, c.version_id);
+  const status = await decideVersion(ctx.env, c.version_id);
   return json({ ok: true, status });
 }
 

@@ -22,6 +22,8 @@ export const SITE = {
     changelogMaxChars: site.limits.changelogMaxChars,
   },
   review: site.review,
+  // Behaviour tests on GitHub-hosted Linux, Windows and macOS machines, run from a separate account.
+  sandbox: site.sandbox as { repo: string; ownerId: number; systems: ('linux' | 'windows' | 'macos')[] },
 } as const;
 
 export type SiteConfig = typeof SITE;

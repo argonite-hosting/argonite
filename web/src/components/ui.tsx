@@ -1,10 +1,11 @@
 import type { ComponentChildren, TargetedMouseEvent } from 'preact';
 import { useEffect, useId, useRef, useState } from 'preact/hooks';
-import type { VersionStatus } from '../../../shared/taxonomy';
+import { loaderLabel, type VersionStatus } from '../../../shared/taxonomy';
+import type { SandboxSummary } from '../../../shared/types';
 import { initials } from '../lib/format';
 import { dismissToast, toast, toasts, useStore } from '../lib/store';
 import { Icon, type IconName } from './Icon';
-import { t } from '../lib/i18n';
+import { t, tn } from '../lib/i18n';
 import { useVerifiedImage } from '../lib/verifiedImage';
 
 export function Avatar({ src, name, size = 'md' }: { src: string | null | undefined; name: string; size?: 'sm' | 'md' | 'lg' }) {
@@ -68,6 +69,55 @@ export function HostList({ hosts }: { hosts: string[] }) {
         ))}
       </ul>
     </details>
+  );
+}
+
+const SANDBOX_OS: Record<SandboxSummary['os'], string> = { linux: 'Linux', windows: 'Windows', macos: 'macOS' };
+
+// What the behaviour tests saw when the file ran inside real Minecraft on fresh machines.
+export function SandboxList({ runs }: { runs?: SandboxSummary[] }) {
+  if (!runs?.length) return null;
+  const outcome = (r: SandboxSummary) =>
+    r.outcome === 'running' ? t('Running') : r.outcome === 'tested' ? t('Tested') : r.outcome === 'unsupported' ? t('Not tested') : t('Didn’t finish');
+  return (
+    <div class="sandbox-list">
+      <strong>{t('Behaviour tests')}</strong>
+      <ul>
+        {runs.map((r) => (
+          <li key={r.os} class="sandbox-run">
+            <div class="sandbox-head">
+              <span class="sandbox-os">{SANDBOX_OS[r.os]}</span>
+              <span class={`badge sandbox-${r.outcome}`}>{outcome(r)}</span>
+              {r.outcome === 'tested' && (
+                <span class="field-hint">
+                  {[
+                    [r.loader ? loaderLabel(r.loader) : null, r.gameVersion].filter(Boolean).join(' '),
+                    r.server ? t('Server started') : t('Server didn’t start'),
+                    r.joined ? t('Client joined') : r.client ? t('Client started') : t('Client not run'),
+                    r.dependencies ? tn(r.dependencies, '{n} dependency', '{n} dependencies') : '',
+                  ]
+                    .filter(Boolean)
+                    .join(' · ')}
+                </span>
+              )}
+              {r.outcome !== 'tested' && r.note && <span class="field-hint">{r.note}</span>}
+            </div>
+            {r.findings.length > 0 ? (
+              <ul class="finding-list">
+                {r.findings.map((f, i) => (
+                  <li key={i} class={`finding sev-${f.severity}`}>
+                    <span class="badge">{t(f.severity)}</span>
+                    <span>{f.detail}</span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              r.outcome === 'tested' && <p class="field-hint">{t('Nothing suspicious happened.')}</p>
+            )}
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }
 

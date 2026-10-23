@@ -1167,5 +1167,19 @@
   "{user} commented on {project}": "{user} 评论了 {project}",
   "{user} replied to you": "{user} 回复了你",
   "{what} copied": "已复制{what}",
-  "{what} removed": "已移除{what}"
+  "{what} removed": "已移除{what}",
+  "Behaviour tests": "行为测试",
+  "Running": "进行中",
+  "Tested": "已测试",
+  "Not tested": "未测试",
+  "Didn’t finish": "未完成",
+  "Server started": "服务器已启动",
+  "Server didn’t start": "服务器未启动",
+  "Client joined": "客户端已加入",
+  "Client started": "客户端已启动",
+  "Client not run": "未运行客户端",
+  "Nothing suspicious happened.": "没有发生可疑行为。",
+  "{n} dependencies": {
+    "other": "{n} 个依赖"
+  }
 }

@@ -920,3 +920,40 @@ details > summary:hover {
 .native-list .finding-path {
   overflow-wrap: anywhere;
 }
+
+/* Behaviour test results in scan reports */
+.sandbox-list {
+  display: grid;
+  gap: 8px;
+  margin: 12px 0 4px;
+  font-size: var(--fs-sm);
+}
+.sandbox-list > ul {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.sandbox-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.sandbox-os {
+  min-width: 64px;
+  font-weight: 600;
+}
+.sandbox-run .finding-list {
+  margin-top: 6px;
+}
+.badge.sandbox-tested {
+  background: var(--success-soft);
+  color: var(--success);
+}
+.badge.sandbox-error {
+  background: var(--warning-soft);
+  color: var(--warning);
+}

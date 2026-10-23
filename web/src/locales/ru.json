@@ -1182,5 +1182,22 @@
   "{user} commented on {project}": "{user} оставил(а) комментарий к {project}",
   "{user} replied to you": "{user} ответил(а) вам",
   "{what} copied": "Скопировано: {what}",
-  "{what} removed": "Удалено: {what}"
+  "{what} removed": "Удалено: {what}",
+  "Behaviour tests": "Проверка поведения",
+  "Running": "Выполняется",
+  "Tested": "Проверено",
+  "Not tested": "Не проверено",
+  "Didn’t finish": "Не завершено",
+  "Server started": "Сервер запущен",
+  "Server didn’t start": "Сервер не запустился",
+  "Client joined": "Клиент подключился",
+  "Client started": "Клиент запущен",
+  "Client not run": "Клиент не запускался",
+  "Nothing suspicious happened.": "Ничего подозрительного не произошло.",
+  "{n} dependencies": {
+    "one": "{n} зависимость",
+    "few": "{n} зависимости",
+    "many": "{n} зависимостей",
+    "other": "{n} зависимости"
+  }
 }

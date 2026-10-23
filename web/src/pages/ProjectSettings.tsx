@@ -9,7 +9,7 @@ import { Icon } from '../components/Icon';
 import { MarkdownEditor } from '../components/Markdown';
 import { Analytics, ModThread, ProjectPermissionPicker, Publishing } from '../components/ProjectPanels';
 import { RequireAuth } from '../components/RequireAuth';
-import { Alert, Avatar, ChannelBadge, Empty, Field, Modal, PageLoading, ProjectIcon, Spinner, StatusBadge, HostList, NativeList, Tabs, useAsync, VerifiedImg } from '../components/ui';
+import { Alert, Avatar, ChannelBadge, Empty, Field, Modal, PageLoading, ProjectIcon, Spinner, StatusBadge, HostList, SandboxList, NativeList, Tabs, useAsync, VerifiedImg } from '../components/ui';
 import { SITE } from '../config';
 import { ApiError, api, upload } from '../lib/api';
 import { date } from '../lib/format';
@@ -512,6 +512,7 @@ function ScanDetail({ v }: { v: Version }) {
           )}
         </div>
       ))}
+      <SandboxList runs={v.sandbox} />
     </div>
   );
 }

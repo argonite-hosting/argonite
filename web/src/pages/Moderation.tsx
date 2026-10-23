@@ -3,7 +3,7 @@ import { REPORT_REASONS, loaderLabel } from '../../../shared/taxonomy';
 import type { AuditEntry, Report, ReviewItem } from '../../../shared/types';
 import { Icon } from '../components/Icon';
 import { RequireAuth } from '../components/RequireAuth';
-import { Avatar, ChannelBadge, Empty, HostList, Modal, NativeList, PageLoading, ProjectIcon, StatusBadge, Tabs, useAsync } from '../components/ui';
+import { Avatar, ChannelBadge, Empty, HostList, SandboxList, Modal, NativeList, PageLoading, ProjectIcon, StatusBadge, Tabs, useAsync } from '../components/ui';
 import { api } from '../lib/api';
 import { ago, bytes, date } from '../lib/format';
 import { useHead } from '../lib/head';
@@ -120,6 +120,7 @@ function Queue({ status }: { status: 'review' | 'rejected' }) {
                   ))}
                 </ul>
               )}
+              <SandboxList runs={v.sandbox} />
             </div>
             <footer class="review-foot">
               {v.releaseUrl && (

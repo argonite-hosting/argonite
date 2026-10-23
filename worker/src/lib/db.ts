@@ -1,5 +1,6 @@
 import { sortGameVersionsDesc } from '../../../shared/gameversions';
 import type { Channel, CommentMode, DependencyKind, FileKind, ProjectStatus, ProjectType, Side, VersionStatus } from '../../../shared/taxonomy';
+import { summariesOf, type SummaryRow } from './sandbox';
 import type { Dependency, FileInfo, Finding, GalleryImage, Member, OrgRef, Project, NativeFile, ProjectSummary, ScanSummary, Version } from '../../../shared/types';
 import { isId } from '../../../shared/validate';
 import type { Env } from '../env';
@@ -298,6 +299,13 @@ export async function loadVersions(env: Env, q: VersionQuery): Promise<Version[]
        FROM files WHERE version_id IN (${scope}) ORDER BY kind = 'primary' DESC, position, created_at`,
     ).bind(...binds),
   ]);
+  const sandboxRows = q.includeScan
+    ? (
+        await env.DB.prepare(`SELECT version_id, file_id, os, status, outcome, summary, findings, finished_at FROM sandbox_runs WHERE version_id IN (${scope})`)
+          .bind(...binds)
+          .all<SummaryRow & { version_id: string; file_id: string }>()
+      ).results
+    : [];
   const group = <T extends { version_id: string }>(list: T[]) => {
     const m = new Map<string, T[]>();
     for (const item of list) m.set(item.version_id, [...(m.get(item.version_id) ?? []), item]);
@@ -357,6 +365,7 @@ export async function loadVersions(env: Env, q: VersionQuery): Promise<Version[]
             scan: primaryRow ? scanOf(primaryRow) : { verdict: null, findings: [], capabilities: [], engines: [], scannedAt: null, natives: [], hosts: [] },
             scans: Object.fromEntries(fileRows.map((f) => [f.id, { ...scanOf(f), filename: f.filename, kind: f.kind, uploaded: f.asset_id !== null }])),
             publishPending: r.publish_pending === 1,
+            sandbox: summariesOf(sandboxRows.filter((x) => x.version_id === r.id && x.file_id === primaryRow?.id)),
           }
         : {}),
     };
