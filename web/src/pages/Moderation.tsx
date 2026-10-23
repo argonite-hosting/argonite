@@ -10,6 +10,7 @@ import { useHead } from '../lib/head';
 import { Link, setQuery, useLocation } from '../lib/router';
 import { errorToast, toast, useSession } from '../lib/store';
 import { t, tn } from '../lib/i18n';
+import { Select } from '../components/Select';
 
 function Decision({ item, action, onClose, onDone }: { item: ReviewItem; action: 'approve' | 'reject'; onClose: () => void; onDone: () => void }) {
   const [reason, setReason] = useState('');
@@ -463,11 +464,11 @@ function Users() {
               </button>
             )}
             {me?.role === 'admin' && (
-              <select class="select select-inline" value={found.role} aria-label={t('Role')} onChange={(e) => role(e.currentTarget.value)}>
+              <Select class="select select-inline" value={found.role} aria-label={t('Role')} onChange={(v) => role(v)}>
                 <option value="user">{t('User')}</option>
                 <option value="moderator">{t('Moderator')}</option>
                 <option value="admin">{t('Admin')}</option>
-              </select>
+              </Select>
             )}
           </div>
         </section>

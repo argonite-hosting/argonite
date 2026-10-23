@@ -5,6 +5,7 @@ import { pub } from '../lib/api';
 import { Icon } from './Icon';
 import { ProjectIcon } from './ui';
 import { t } from '../lib/i18n';
+import { Select } from './Select';
 
 export interface DepDraft {
   projectId: string;
@@ -37,18 +38,18 @@ export function DependencyPicker({ value, onChange, excludeId }: { value: DepDra
           {value.map((d) => (
             <li key={d.projectId}>
               <span class="dep-name">{d.name}</span>
-              <select
+              <Select
                 class="select"
                 value={d.kind}
                 aria-label={t('Relationship to {name}', { name: d.name })}
-                onChange={(e) => onChange(value.map((x) => (x.projectId === d.projectId ? { ...x, kind: e.currentTarget.value as DependencyKind } : x)))}
+                onChange={(v) => onChange(value.map((x) => (x.projectId === d.projectId ? { ...x, kind: v as DependencyKind } : x)))}
               >
                 {DEPENDENCY_KINDS.map((k) => (
                   <option key={k} value={k}>
                     {t(k[0].toUpperCase() + k.slice(1))}
                   </option>
                 ))}
-              </select>
+              </Select>
               <button type="button" class="btn btn-ghost btn-sm btn-icon" aria-label={t('Remove {name}', { name: d.name })} onClick={() => onChange(value.filter((x) => x.projectId !== d.projectId))}>
                 <Icon name="x" />
               </button>

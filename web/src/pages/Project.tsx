@@ -21,6 +21,7 @@ import { t, tn } from '../lib/i18n';
 import { Link, navigate, useLocation } from '../lib/router';
 import { errorToast, isStaff, toast, useSession } from '../lib/store';
 import { safeHref, useBlockedLinks } from '../lib/blockedLinks';
+import { Select } from '../components/Select';
 
 type Tab = 'overview' | 'versions' | 'changelog' | 'gallery' | 'contents' | 'comments' | 'version';
 const TABS: Tab[] = ['versions', 'changelog', 'gallery', 'contents', 'comments'];
@@ -109,24 +110,24 @@ function QuickDownload({ versions, slug, project }: { versions: Version[]; slug:
         {loaders.length > 1 && (
           <label>
             <span class="panel-title">{project.type === 'plugin' ? t('Platform') : t('Loader')}</span>
-            <select class="select" value={loader} onChange={(e) => update(e.currentTarget.value, gv)}>
+            <Select class="select" value={loader} onChange={(v) => update(v, gv)}>
               {loaders.map((l) => (
                 <option key={l} value={l}>
                   {loaderLabel(l)}
                 </option>
               ))}
-            </select>
+            </Select>
           </label>
         )}
         <label>
           <span class="panel-title">Minecraft</span>
-          <select class="select" value={gv} onChange={(e) => update(loader, e.currentTarget.value)}>
+          <Select class="select" value={gv} onChange={(v) => update(loader, v)}>
             {gvs.map((g) => (
               <option key={g} value={g}>
                 {g}
               </option>
             ))}
-          </select>
+          </Select>
         </label>
       </div>
       {pick ? (
@@ -512,28 +513,28 @@ function VersionsTab({ versions, slug }: { versions: Version[]; slug: string }) 
   return (
     <div class="stack">
       <div class="version-filters">
-        <select class="select" value={loader} onChange={(e) => setLoader(e.currentTarget.value)} aria-label={t('Filter by loader')}>
+        <Select class="select" value={loader} onChange={(v) => setLoader(v)} aria-label={t('Filter by loader')}>
           <option value="">{t('All loaders')}</option>
           {loaders.map((l) => (
             <option key={l} value={l}>
               {loaderLabel(l)}
             </option>
           ))}
-        </select>
-        <select class="select" value={gv} onChange={(e) => setGv(e.currentTarget.value)} aria-label={t('Filter by game version')}>
+        </Select>
+        <Select class="select" value={gv} onChange={(v) => setGv(v)} aria-label={t('Filter by game version')}>
           <option value="">{t('All game versions')}</option>
           {gvs.map((g) => (
             <option key={g} value={g}>
               {g}
             </option>
           ))}
-        </select>
-        <select class="select" value={channel} onChange={(e) => setChannel(e.currentTarget.value)} aria-label={t('Filter by channel')}>
+        </Select>
+        <Select class="select" value={channel} onChange={(v) => setChannel(v)} aria-label={t('Filter by channel')}>
           <option value="">{t('All channels')}</option>
           <option value="release">{t('Release')}</option>
           <option value="beta">{t('Beta')}</option>
           <option value="alpha">{t('Alpha')}</option>
-        </select>
+        </Select>
       </div>
       {shown.length ? (
         <ul class="version-list card">
@@ -637,21 +638,21 @@ function DependencyFinder({ version }: { version: Version }) {
       <span class="aside-label">{t('Get the required dependencies')}</span>
       <div class="row-actions">
         {version.loaders.length > 1 && (
-          <select class="select select-sm" value={loader} onChange={(e) => setLoader(e.currentTarget.value)} aria-label={t('Loader')}>
+          <Select class="select select-sm" value={loader} onChange={(v) => setLoader(v)} aria-label={t('Loader')}>
             {version.loaders.map((l) => (
               <option key={l} value={l}>
                 {loaderLabel(l)}
               </option>
             ))}
-          </select>
+          </Select>
         )}
-        <select class="select select-sm" value={gv} onChange={(e) => setGv(e.currentTarget.value)} aria-label="Minecraft">
+        <Select class="select select-sm" value={gv} onChange={(v) => setGv(v)} aria-label="Minecraft">
           {version.gameVersions.map((g) => (
             <option key={g} value={g}>
               {g}
             </option>
           ))}
-        </select>
+        </Select>
         <button type="button" class="btn btn-sm" onClick={find} disabled={busy}>
           {busy ? <Spinner /> : <Icon name="search" />}
           {t('Find')}

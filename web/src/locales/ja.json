@@ -1213,5 +1213,7 @@
   "{n} minor notes": {
     "other": "軽微な注記 {n} 件"
   },
-  "Every file is fetched through a short-lived private link and scanned for malware, including every jar packed inside it. When something looks off, moderators can also try a mod, plugin or modpack out in an isolated environment. Resource packs, data packs and shaders are rejected outright if they contain any code.": "すべてのファイルは短時間だけ有効な非公開リンクで取得され、中に含まれるすべての jar も含めてマルウェアスキャンされます。気になる点があれば、モデレーターが Mod、プラグイン、Modpack を隔離された環境で試すこともできます。リソースパック、データパック、シェーダーは、コードが含まれていればその時点で拒否されます。"
+  "Every file is fetched through a short-lived private link and scanned for malware, including every jar packed inside it. When something looks off, moderators can also try a mod, plugin or modpack out in an isolated environment. Resource packs, data packs and shaders are rejected outright if they contain any code.": "すべてのファイルは短時間だけ有効な非公開リンクで取得され、中に含まれるすべての jar も含めてマルウェアスキャンされます。気になる点があれば、モデレーターが Mod、プラグイン、Modpack を隔離された環境で試すこともできます。リソースパック、データパック、シェーダーは、コードが含まれていればその時点で拒否されます。",
+  "Filter": "絞り込み",
+  "No matches": "一致なし"
 }

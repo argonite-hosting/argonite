@@ -3,6 +3,7 @@ import { LOCALES, setLocale, t, useLocale } from '../lib/i18n';
 import { Link } from '../lib/router';
 import { Icon } from './Icon';
 import { LogoMark } from './Logo';
+import { Select } from './Select';
 
 export function Footer() {
   const lang = useLocale();
@@ -44,13 +45,13 @@ export function Footer() {
         <label class="footer-lang">
           <Icon name="globe" />
           <span class="sr-only">{t('Language')}</span>
-          <select class="select select-sm" value={lang} onChange={(e) => void setLocale(e.currentTarget.value)}>
+          <Select class="select select-sm" value={lang} onChange={(v) => void setLocale(v)}>
             {LOCALES.map((l) => (
               <option key={l.id} value={l.id}>
                 {l.name}
               </option>
             ))}
-          </select>
+          </Select>
         </label>
       </div>
     </footer>

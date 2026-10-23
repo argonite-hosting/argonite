@@ -12,6 +12,7 @@ import { useHead } from '../lib/head';
 import { t } from '../lib/i18n';
 import { Link, navigate } from '../lib/router';
 import { errorToast, toast } from '../lib/store';
+import { Select } from '../components/Select';
 
 function Form({ existing }: { existing: ServerListing | null }) {
   useHead(existing ? t('Edit {name}', { name: existing.name }) : t('List a server'), undefined, 'noindex');
@@ -178,13 +179,13 @@ function Form({ existing }: { existing: ServerListing | null }) {
           {edition === 'bedrock' && <Alert kind="info">{t('Bedrock servers are listed without a live status, because their status check uses UDP.')}</Alert>}
           <Field label={t('Region')}>
             {(id) => (
-              <select id={id} class="select" value={region} onChange={(e) => setRegion(e.currentTarget.value)}>
+              <Select id={id} class="select" value={region} onChange={(v) => setRegion(v)}>
                 {SERVER_REGIONS.map((r) => (
                   <option key={r.id} value={r.id}>
                     {t(r.label)}
                   </option>
                 ))}
-              </select>
+              </Select>
             )}
           </Field>
           <div class="field">

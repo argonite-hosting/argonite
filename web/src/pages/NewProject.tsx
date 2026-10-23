@@ -12,6 +12,7 @@ import { useHead } from '../lib/head';
 import { navigate } from '../lib/router';
 import { TYPE_BLURB, TYPE_ICON } from '../lib/typeIcons';
 import { t } from '../lib/i18n';
+import { Select } from '../components/Select';
 
 function RepoPicker({ info, mode, setMode, repoId, setRepoId, repoName, setRepoName, error }: {
   info: InstallationInfo;
@@ -62,14 +63,14 @@ function RepoPicker({ info, mode, setMode, repoId, setRepoId, repoName, setRepoN
       ) : publicRepos.length ? (
         <Field label={t('Repository')} hint={t('Only public repositories the app can access are listed.')} error={error}>
           {(id, d) => (
-            <select id={id} class="select" value={repoId ?? ''} aria-describedby={d} onChange={(e) => setRepoId(e.currentTarget.value ? Number(e.currentTarget.value) : null)}>
+            <Select id={id} class="select" value={repoId ?? ''} aria-describedby={d} onChange={(v) => setRepoId(v ? Number(v) : null)}>
               <option value="">{t('Choose a repository')}</option>
               {publicRepos.map((r) => (
                 <option key={r.id} value={r.id}>
                   {r.fullName}
                 </option>
               ))}
-            </select>
+            </Select>
           )}
         </Field>
       ) : (
@@ -232,13 +233,13 @@ function Form() {
             <div class="form-row">
               <Field label={t('License')}>
                 {(id) => (
-                  <select id={id} class="select" value={license} onChange={(e) => setLicense(e.currentTarget.value)}>
+                  <Select id={id} class="select" value={license} onChange={(v) => setLicense(v)}>
                     {LICENSES.map((l) => (
                       <option key={l.id} value={l.id}>
                         {t(l.label)}
                       </option>
                     ))}
-                  </select>
+                  </Select>
                 )}
               </Field>
             </div>

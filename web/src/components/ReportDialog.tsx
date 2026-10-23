@@ -5,6 +5,7 @@ import { ApiError, api } from '../lib/api';
 import { t } from '../lib/i18n';
 import { toast } from '../lib/store';
 import { Field, Modal } from './ui';
+import { Select } from './Select';
 
 export function ReportDialog({ targetType, targetId, label, onClose }: { targetType: Report['targetType']; targetId: string; label: string; onClose: () => void }) {
   const [reason, setReason] = useState(targetType === 'version' ? 'malware' : 'spam');
@@ -46,13 +47,13 @@ export function ReportDialog({ targetType, targetId, label, onClose }: { targetT
       <form id="report-form" class="stack" onSubmit={submit}>
         <Field label={t('Reason')}>
           {(id) => (
-            <select id={id} class="select" value={reason} onChange={(e) => setReason(e.currentTarget.value)}>
+            <Select id={id} class="select" value={reason} onChange={(v) => setReason(v)}>
               {REPORT_REASONS.map((r) => (
                 <option key={r.id} value={r.id}>
                   {t(r.label)}
                 </option>
               ))}
-            </select>
+            </Select>
           )}
         </Field>
         <Field label={t('Details')} hint={t('At least 10 characters. Links to evidence help.')} error={error ?? undefined}>

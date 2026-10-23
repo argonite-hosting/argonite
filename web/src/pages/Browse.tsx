@@ -9,6 +9,7 @@ import { pub } from '../lib/api';
 import { useHead } from '../lib/head';
 import { t, tn } from '../lib/i18n';
 import { setQuery, useLocation } from '../lib/router';
+import { Select } from '../components/Select';
 
 const PAGE_SIZE = 20;
 const FLAG_KEYS = ['environment', 'openSource', 'hideArchived'] as const;
@@ -250,7 +251,7 @@ export default function Browse() {
             </button>
             <label class="sort-select">
               <span class="sr-only">{t('Sort by')}</span>
-              <select class="select" value={sort} onChange={(e) => setQuery({ sort: e.currentTarget.value, page: null })}>
+              <Select class="select" value={sort} onChange={(v) => setQuery({ sort: v, page: null })}>
                 {Object.entries(sortLabels())
                   .filter(([k]) => k !== 'relevance' || qParam)
                   .map(([k, v]) => (
@@ -258,7 +259,7 @@ export default function Browse() {
                       {v}
                     </option>
                   ))}
-              </select>
+              </Select>
             </label>
           </div>
           <ActiveFilters fixedType={!!fixed} />

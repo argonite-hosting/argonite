@@ -18,6 +18,7 @@ import { useHead } from '../lib/head';
 import { t } from '../lib/i18n';
 import { Link, useLocation } from '../lib/router';
 import { detectMeta, type DetectedMeta } from '../lib/zipmeta';
+import { Select } from '../components/Select';
 
 type Stage =
   | { kind: 'form' }
@@ -400,12 +401,12 @@ function UploadForm({ slug, onReset }: { slug: string; onReset: () => void }) {
                         <span class="muted">{bytes(x.file.size)}</span>
                       </span>
                       {CODE_TYPES.has(project.type) && (
-                        <select
+                        <Select
                           class="select select-sm"
                           value={x.kind}
                           aria-label={t('File type')}
-                          onChange={(e) => {
-                            const kind = e.currentTarget.value as FileKind;
+                          onChange={(v) => {
+                            const kind = v as FileKind;
                             if (!extraAccept(project.type, kind).includes(fileExtension(x.file.name))) {
                               setExtraError(t('That file type doesn’t fit a {kind}.', { kind: t(FILE_KIND_LABELS[kind]).toLowerCase() }));
                               return;
@@ -418,7 +419,7 @@ function UploadForm({ slug, onReset }: { slug: string; onReset: () => void }) {
                               {t(FILE_KIND_LABELS[k])}
                             </option>
                           ))}
-                        </select>
+                        </Select>
                       )}
                       <button type="button" class="btn btn-ghost btn-sm btn-icon" aria-label={t('Remove {name}', { name: x.file.name })} onClick={() => setExtras((list) => list.filter((_, j) => j !== i))}>
                         <Icon name="x" />

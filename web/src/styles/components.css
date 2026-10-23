@@ -981,3 +981,112 @@ button.chip:hover {
     translate: 0 8px;
   }
 }
+
+/* Custom dropdowns (components/Select.tsx): the closed state is the .select look above */
+.select-trigger {
+  display: flex;
+  align-items: center;
+  text-align: left;
+  font: inherit;
+  font-size: var(--fs-base);
+}
+.select-trigger.select-sm {
+  font-size: var(--fs-sm);
+}
+.select-trigger[aria-expanded='true'] {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-ring);
+}
+.select-trigger:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.select-value {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.select-pop {
+  position: fixed;
+  z-index: 150;
+  display: flex;
+  flex-direction: column;
+  max-width: min(420px, calc(100vw - 16px));
+  overflow: hidden;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow-lg);
+  animation: pop-in var(--fast) var(--ease);
+}
+.select-pop.is-up {
+  transform: translateY(-100%);
+}
+.select-filter {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text-3);
+}
+.select-filter svg {
+  flex: none;
+  width: 15px;
+  height: 15px;
+}
+.select-filter-input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: var(--fs-sm);
+}
+.select-list {
+  margin: 0;
+  padding: 4px;
+  overflow-y: auto;
+  list-style: none;
+  overscroll-behavior: contain;
+}
+.select-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 7px 10px;
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  font-size: var(--fs-sm);
+  cursor: pointer;
+  user-select: none;
+}
+.select-option[data-active='true'] {
+  background: var(--surface-2);
+}
+.select-option[aria-selected='true'] {
+  color: var(--accent);
+  font-weight: 600;
+}
+.select-option[aria-disabled='true'] {
+  color: var(--text-3);
+  cursor: default;
+}
+.select-option svg {
+  flex: none;
+  width: 15px;
+  height: 15px;
+}
+.select-option-label {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.select-empty {
+  padding: 10px;
+  color: var(--text-3);
+  font-size: var(--fs-sm);
+}

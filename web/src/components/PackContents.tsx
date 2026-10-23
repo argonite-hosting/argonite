@@ -8,6 +8,7 @@ import { t, tn } from '../lib/i18n';
 import { Link } from '../lib/router';
 import { Icon } from './Icon';
 import { Empty, Spinner, useAsync } from './ui';
+import { Select } from './Select';
 
 function SourceBadge({ e }: { e: PackEntry }) {
   if (e.source === 'argonite') return <span class="badge badge-success">{t('Verified here')}</span>;
@@ -69,11 +70,11 @@ export function PackContents({ version }: { version: Version | undefined }) {
       </div>
       <div class="version-filters">
         <input class="input" type="search" placeholder={t('Filter files')} value={query} onInput={(e) => setQuery(e.currentTarget.value)} aria-label={t('Filter files')} />
-        <select class="select" value={side} onChange={(e) => setSide(e.currentTarget.value as typeof side)} aria-label={t('Filter by side')}>
+        <Select class="select" value={side} onChange={(v) => setSide(v as typeof side)} aria-label={t('Filter by side')}>
           <option value="">{t('Client and server')}</option>
           <option value="client">{t('Client')}</option>
           <option value="server">{t('Server')}</option>
-        </select>
+        </Select>
       </div>
       {shown.length ? (
         <ul class="pack-list">

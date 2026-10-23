@@ -9,6 +9,7 @@ import { useHead } from '../lib/head';
 import { t } from '../lib/i18n';
 import { Link, setQuery, useLocation } from '../lib/router';
 import { useSession } from '../lib/store';
+import { Select } from '../components/Select';
 
 export function ServerFavicon({ s, size = 56 }: { s: Pick<ServerListing, 'favicon' | 'name'>; size?: number }) {
   return s.favicon ? (
@@ -79,23 +80,23 @@ export default function Servers() {
         }}
       >
         <input class="input" type="search" value={draft} placeholder={t('Search servers')} aria-label={t('Search servers')} onInput={(e) => setDraft(e.currentTarget.value)} />
-        <select class="select" value={edition} aria-label={t('Edition')} onChange={(e) => setQuery({ edition: e.currentTarget.value || null, page: null })}>
+        <Select class="select" value={edition} aria-label={t('Edition')} onChange={(v) => setQuery({ edition: v || null, page: null })}>
           <option value="">{t('Java and Bedrock')}</option>
           <option value="java">Java</option>
           <option value="bedrock">Bedrock</option>
-        </select>
-        <select class="select" value={region} aria-label={t('Region')} onChange={(e) => setQuery({ region: e.currentTarget.value || null, page: null })}>
+        </Select>
+        <Select class="select" value={region} aria-label={t('Region')} onChange={(v) => setQuery({ region: v || null, page: null })}>
           <option value="">{t('Any region')}</option>
           {SERVER_REGIONS.map((r) => (
             <option key={r.id} value={r.id}>
               {t(r.label)}
             </option>
           ))}
-        </select>
-        <select class="select" value={sort} aria-label={t('Sort')} onChange={(e) => setQuery({ sort: e.currentTarget.value || null, page: null })}>
+        </Select>
+        <Select class="select" value={sort} aria-label={t('Sort')} onChange={(v) => setQuery({ sort: v || null, page: null })}>
           <option value="">{t('Most players')}</option>
           <option value="newest">{t('Newest')}</option>
-        </select>
+        </Select>
         <label class="check">
           <input type="checkbox" checked={online} onChange={(e) => setQuery({ online: e.currentTarget.checked ? '1' : null, page: null })} />
           <span>{t('Online now')}</span>

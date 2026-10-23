@@ -10,6 +10,7 @@ import { useHead } from '../lib/head';
 import { t, tn } from '../lib/i18n';
 import { Link, navigate } from '../lib/router';
 import { errorToast, toast, useSession } from '../lib/store';
+import { Select } from '../components/Select';
 
 export default function CollectionPage({ params }: { params: Record<string, string> }) {
   const { user, ready } = useSession();
@@ -168,11 +169,11 @@ export default function CollectionPage({ params }: { params: Record<string, stri
           </Field>
           <Field label={t('Visibility')} hint={t('Public collections are stored in the site’s public GitHub data repository, where anyone can read them. Unlisted and private ones never leave our database.')}>
             {(id, d) => (
-              <select id={id} class="select" value={visibility} aria-describedby={d} onChange={(e) => setVisibility(e.currentTarget.value as typeof visibility)}>
+              <Select id={id} class="select" value={visibility} aria-describedby={d} onChange={(v) => setVisibility(v as typeof visibility)}>
                 <option value="public">{t('Public · on your profile')}</option>
                 <option value="unlisted">{t('Unlisted · only people with the link')}</option>
                 <option value="private">{t('Private · only you')}</option>
-              </select>
+              </Select>
             )}
           </Field>
         </Modal>

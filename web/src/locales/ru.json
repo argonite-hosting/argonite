@@ -1237,5 +1237,7 @@
     "many": "{n} мелких замечаний",
     "other": "{n} мелкого замечания"
   },
-  "Every file is fetched through a short-lived private link and scanned for malware, including every jar packed inside it. When something looks off, moderators can also try a mod, plugin or modpack out in an isolated environment. Resource packs, data packs and shaders are rejected outright if they contain any code.": "Каждый файл загружается по кратковременной закрытой ссылке и проверяется на вредоносный код, включая каждый вложенный jar. Если что-то вызывает подозрения, модераторы могут также запустить мод, плагин или сборку в изолированной среде. Наборы ресурсов, наборы данных и шейдеры сразу отклоняются, если содержат код."
+  "Every file is fetched through a short-lived private link and scanned for malware, including every jar packed inside it. When something looks off, moderators can also try a mod, plugin or modpack out in an isolated environment. Resource packs, data packs and shaders are rejected outright if they contain any code.": "Каждый файл загружается по кратковременной закрытой ссылке и проверяется на вредоносный код, включая каждый вложенный jar. Если что-то вызывает подозрения, модераторы могут также запустить мод, плагин или сборку в изолированной среде. Наборы ресурсов, наборы данных и шейдеры сразу отклоняются, если содержат код.",
+  "Filter": "Фильтр",
+  "No matches": "Ничего не найдено"
 }

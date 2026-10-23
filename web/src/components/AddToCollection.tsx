@@ -7,6 +7,7 @@ import { useLocation } from '../lib/router';
 import { errorToast, toast, useSession } from '../lib/store';
 import { Icon } from './Icon';
 import { Field, Modal, Spinner } from './ui';
+import { Select } from './Select';
 
 interface Mine {
   collections: CollectionSummary[];
@@ -106,11 +107,11 @@ export function AddToCollection({ projectId }: { projectId: string }) {
                   {(id) => <input id={id} class="input" maxLength={64} value={name} placeholder={t('e.g. Performance mods')} onInput={(e) => setName(e.currentTarget.value)} />}
                 </Field>
                 <div class="row-actions">
-                  <select class="select" value={visibility} onChange={(e) => setVisibility(e.currentTarget.value as typeof visibility)} aria-label={t('Visibility')}>
+                  <Select class="select" value={visibility} onChange={(v) => setVisibility(v as typeof visibility)} aria-label={t('Visibility')}>
                     <option value="private">{t('Private')}</option>
                     <option value="unlisted">{t('Unlisted')}</option>
                     <option value="public">{t('Public')}</option>
-                  </select>
+                  </Select>
                   <button type="submit" class="btn btn-primary" disabled={busy === 'new' || name.trim().length < 2}>
                     {busy === 'new' ? <Spinner /> : <Icon name="plus" />}
                     {t('Create and save')}

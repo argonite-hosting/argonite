@@ -1226,5 +1226,7 @@
     "one": "{n} remarque mineure",
     "other": "{n} remarques mineures"
   },
-  "Every file is fetched through a short-lived private link and scanned for malware, including every jar packed inside it. When something looks off, moderators can also try a mod, plugin or modpack out in an isolated environment. Resource packs, data packs and shaders are rejected outright if they contain any code.": "Chaque fichier est récupéré via un lien privé de courte durée et analysé contre les logiciels malveillants, y compris chaque jar qu’il contient. Si quelque chose paraît suspect, les modérateurs peuvent aussi essayer un mod, un plugin ou un modpack dans un environnement isolé. Les packs de ressources, packs de données et shaders sont refusés d’office s’ils contiennent du code."
+  "Every file is fetched through a short-lived private link and scanned for malware, including every jar packed inside it. When something looks off, moderators can also try a mod, plugin or modpack out in an isolated environment. Resource packs, data packs and shaders are rejected outright if they contain any code.": "Chaque fichier est récupéré via un lien privé de courte durée et analysé contre les logiciels malveillants, y compris chaque jar qu’il contient. Si quelque chose paraît suspect, les modérateurs peuvent aussi essayer un mod, un plugin ou un modpack dans un environnement isolé. Les packs de ressources, packs de données et shaders sont refusés d’office s’ils contiennent du code.",
+  "Filter": "Filtrer",
+  "No matches": "Aucun résultat"
 }

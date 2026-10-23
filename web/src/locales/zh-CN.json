@@ -1213,5 +1213,7 @@
   "{n} minor notes": {
     "other": "{n} 条次要说明"
   },
-  "Every file is fetched through a short-lived private link and scanned for malware, including every jar packed inside it. When something looks off, moderators can also try a mod, plugin or modpack out in an isolated environment. Resource packs, data packs and shaders are rejected outright if they contain any code.": "每个文件都通过短期有效的私有链接获取并进行恶意软件扫描，包括其中的每个 jar。如果有可疑之处，版主还可以在隔离环境中试运行模组、插件或整合包。资源包、数据包和光影如果包含任何代码，会被直接拒绝。"
+  "Every file is fetched through a short-lived private link and scanned for malware, including every jar packed inside it. When something looks off, moderators can also try a mod, plugin or modpack out in an isolated environment. Resource packs, data packs and shaders are rejected outright if they contain any code.": "每个文件都通过短期有效的私有链接获取并进行恶意软件扫描，包括其中的每个 jar。如果有可疑之处，版主还可以在隔离环境中试运行模组、插件或整合包。资源包、数据包和光影如果包含任何代码，会被直接拒绝。",
+  "Filter": "筛选",
+  "No matches": "没有匹配项"
 }

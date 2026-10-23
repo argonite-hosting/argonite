@@ -11,6 +11,7 @@ import { useHead } from '../lib/head';
 import { LOCALES, setLocale, t, useLocale } from '../lib/i18n';
 import { Link, navigate, setQuery, useLocation } from '../lib/router';
 import { errorToast, refreshSession, toast } from '../lib/store';
+import { Select } from '../components/Select';
 
 type TabId = 'profile' | 'tokens' | 'notifications' | 'account';
 
@@ -216,12 +217,12 @@ function Tokens() {
           </div>
           <Field label={t('Expires')}>
             {(id) => (
-              <select id={id} class="select" value={days} onChange={(e) => setDays(Number(e.currentTarget.value))}>
+              <Select id={id} class="select" value={days} onChange={(v) => setDays(Number(v))}>
                 <option value={30}>{t('{n} days', { n: 30 })}</option>
                 <option value={90}>{t('{n} days', { n: 90 })}</option>
                 <option value={365}>{t('1 year')}</option>
                 <option value={0}>{t('Never')}</option>
-              </select>
+              </Select>
             )}
           </Field>
         </Modal>
@@ -306,13 +307,13 @@ function Account({ user }: { user: Me }) {
     <div class="stack-lg">
       <section class="card card-pad stack">
         <h2 class="form-section-title">{t('Language')}</h2>
-        <select class="select" value={lang} aria-label={t('Language')} onChange={(e) => void setLocale(e.currentTarget.value)}>
+        <Select class="select" value={lang} aria-label={t('Language')} onChange={(v) => void setLocale(v)}>
           {LOCALES.map((l) => (
             <option key={l.id} value={l.id}>
               {l.name}
             </option>
           ))}
-        </select>
+        </Select>
         <p class="field-hint">{t('Project descriptions and comments stay in the language their authors wrote them in.')}</p>
       </section>
       <section class="card card-pad stack">

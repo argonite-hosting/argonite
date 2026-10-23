@@ -17,6 +17,7 @@ import { useHead } from '../lib/head';
 import { t, tn } from '../lib/i18n';
 import { Link, navigate, setQuery, useLocation } from '../lib/router';
 import { errorToast, isStaff, toast, useSession } from '../lib/store';
+import { Select } from '../components/Select';
 
 interface Manage {
   project: Project;
@@ -127,13 +128,13 @@ function General({ m, reload }: { m: Manage; reload: () => void }) {
           <div class="form-row">
             <Field label={t('License')}>
               {(id) => (
-                <select id={id} class="select" value={license} onChange={(e) => setLicense(e.currentTarget.value)}>
+                <Select id={id} class="select" value={license} onChange={(v) => setLicense(v)}>
                   {LICENSES.map((l) => (
                     <option key={l.id} value={l.id}>
                       {t(l.label)}
                     </option>
                   ))}
-                </select>
+                </Select>
               )}
             </Field>
             <Field label={t('License link')} optional={license !== 'LicenseRef-Custom'} error={err.licenseUrl}>
@@ -144,24 +145,24 @@ function General({ m, reload }: { m: Manage; reload: () => void }) {
             <div class="form-row">
               <Field label={t('Client side')}>
                 {(id) => (
-                  <select id={id} class="select" value={clientSide} onChange={(e) => setClientSide(e.currentTarget.value as typeof clientSide)}>
+                  <Select id={id} class="select" value={clientSide} onChange={(v) => setClientSide(v as typeof clientSide)}>
                     {SIDES.map((s) => (
                       <option key={s} value={s}>
                         {sideLabel[s]}
                       </option>
                     ))}
-                  </select>
+                  </Select>
                 )}
               </Field>
               <Field label={t('Server side')}>
                 {(id) => (
-                  <select id={id} class="select" value={serverSide} onChange={(e) => setServerSide(e.currentTarget.value as typeof serverSide)}>
+                  <Select id={id} class="select" value={serverSide} onChange={(v) => setServerSide(v as typeof serverSide)}>
                     {SIDES.map((s) => (
                       <option key={s} value={s}>
                         {sideLabel[s]}
                       </option>
                     ))}
-                  </select>
+                  </Select>
                 )}
               </Field>
             </div>
@@ -753,7 +754,7 @@ function Members({ m, reload }: { m: Manage; reload: () => void }) {
           <div class="form-row form-row-end">
             <Field label={t('Owned by')}>
               {(id) => (
-                <select id={id} class="select" value={orgId} onChange={(e) => setOrgId(e.currentTarget.value)}>
+                <Select id={id} class="select" value={orgId} onChange={(v) => setOrgId(v)}>
                   <option value="">{t('Just me')}</option>
                   {(orgs.data?.organizations ?? [])
                     .filter((o) => o.accepted)
@@ -762,7 +763,7 @@ function Members({ m, reload }: { m: Manage; reload: () => void }) {
                         {o.name}
                       </option>
                     ))}
-                </select>
+                </Select>
               )}
             </Field>
             <button type="button" class="btn" disabled={orgId === (m.project.org?.id ?? '')} onClick={moveOrg}>
