@@ -54,6 +54,8 @@ export function withHead(template: string, tags: string): string {
   return `${template.slice(0, start + START.length)}\n    ${tags}\n    ${template.slice(end)}`;
 }
 
+// The plain copy sits in <noscript>: browsers running the app never draw it (no flash of an unstyled
+// page while the stylesheet loads), while crawlers and visitors without JavaScript still get it.
 export function withBody(template: string, html: string): string {
-  return template.replace('<div id="app"></div>', `<div id="app">${html}</div>`);
+  return template.replace('<div id="app"></div>', `<div id="app"><noscript>${html}</noscript></div>`);
 }

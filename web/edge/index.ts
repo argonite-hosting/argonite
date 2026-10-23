@@ -1,8 +1,8 @@
 // Site worker. Static files are served straight from the asset store; this script only runs for
 // project pages, user pages and the sitemap (see run_worker_first in wrangler.template.toml).
 // It fills the page head with that page's own title, description and structured data, and puts a
-// plain-HTML version of the content in the body for crawlers that don't run JavaScript. The app
-// replaces it as soon as it loads, and shows the same information.
+// plain-HTML version of the content in the body, inside <noscript>, for crawlers and visitors that
+// don't run JavaScript. Everyone else only ever sees the app, which shows the same information.
 import { SITE } from '../../shared/config';
 import { sortGameVersionsDesc } from '../../shared/gameversions';
 import { markdownToText, projectFacts, projectHead, typeLabel, userHead, type PageHead, type ProjectTab } from '../../shared/seo';

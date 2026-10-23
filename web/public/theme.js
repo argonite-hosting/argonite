@@ -1,6 +1,6 @@
 (function () {
   var root = document.documentElement;
-  // The app replaces the server's plain-HTML copy of the page, so skip painting it.
+  // Marks pages as running the app (styles use it to hide anything meant only for no-JavaScript visits).
   root.classList.add('js');
   try {
     var t = localStorage.getItem('argonite-theme');
