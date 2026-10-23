@@ -1,0 +1,12 @@
+node_modules/
+dist/
+.wrangler/
+worker/wrangler.toml
+web/wrangler.toml
+*.log
+.DS_Store
+__pycache__/
+*.pyc
+.env
+.env.*
+secrets/

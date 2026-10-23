@@ -1,0 +1,24 @@
+{
+  "name": "@argonite/web",
+  "private": true,
+  "license": "AGPL-3.0-only",
+  "type": "module",
+  "scripts": {
+    "build": "vite build && node scripts/prerender.mjs",
+    "typecheck": "tsc --noEmit -p . && tsc --noEmit -p edge",
+    "deploy": "node ../tools/sync-config.mjs && wrangler deploy"
+  },
+  "dependencies": {
+    "@fontsource-variable/geist": "5.3.0",
+    "@fontsource-variable/geist-mono": "5.3.0",
+    "@fontsource-variable/space-grotesk": "5.3.0",
+    "dompurify": "3.4.17",
+    "marked": "18.1.1",
+    "preact": "11.0.1"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "5.20261021.1",
+    "vite": "8.3.5",
+    "wrangler": "4.151.3"
+  }
+}

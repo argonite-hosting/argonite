@@ -1,0 +1,94 @@
+name: Scan uploads
+
+on:
+  repository_dispatch:
+    types: [argonite-scan]
+  schedule:
+    - cron: '*/15 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: scanner-${{ github.event.client_payload.job_id || 'sweep' }}
+  cancel-in-progress: false
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    environment: scanner
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          sparse-checkout: |
+            scanner
+            config
+
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.15'
+
+      - name: Install ClamAV and YARA
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq --no-install-recommends clamav yara
+          sudo systemctl stop clamav-freshclam || true
+          mkdir -p "$HOME/clamdb"
+
+      - name: Pick signature cache key
+        id: day
+        run: |
+          echo "key=$(date -u +%Y%m%d)" >> "$GITHUB_OUTPUT"
+          echo "week=$(date -u +%G%V)" >> "$GITHUB_OUTPUT"
+
+      - name: Restore ClamAV signatures
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/clamdb
+          key: clamav-${{ runner.os }}-${{ steps.day.outputs.key }}
+          restore-keys: clamav-${{ runner.os }}-
+
+      # Ubuntu's AppArmor profile only lets freshclam use /etc/clamav and /var/lib/clamav,
+      # so the cached signatures are copied in before the update and back out after it.
+      - name: Update ClamAV signatures
+        run: |
+          if [ -n "$(ls -A "$HOME/clamdb")" ]; then
+            sudo cp "$HOME"/clamdb/* /var/lib/clamav/
+            sudo chown clamav:clamav /var/lib/clamav/*
+          fi
+          sudo freshclam --quiet || echo "freshclam failed; using cached signatures"
+          ls /var/lib/clamav/*.c[vl]d > /dev/null
+          cp /var/lib/clamav/*.c[vl]d "$HOME/clamdb/"
+
+      # Results for files inside modpacks, keyed by SHA-512, so popular mods are scanned once a week at most.
+      - name: Restore modpack scan cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.argonite-scan-cache
+          key: pack-scans-${{ steps.day.outputs.week }}-${{ github.run_id }}
+          restore-keys: pack-scans-${{ steps.day.outputs.week }}-
+
+      - name: Fetch private rules
+        if: ${{ vars.PRIVATE_RULES_REPO != '' }}
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: ${{ vars.PRIVATE_RULES_REPO }}
+          token: ${{ secrets.PRIVATE_RULES_TOKEN }}
+          path: private-rules
+          persist-credentials: false
+
+      - name: Scan
+        env:
+          JOB_ID: ${{ github.event.client_payload.job_id }}
+          ARGONITE_SCANNER_SECRET: ${{ secrets.ARGONITE_SCANNER_SECRET }}
+          ARGONITE_SIGNING_KEY: ${{ secrets.ARGONITE_SIGNING_KEY }}
+          ARGONITE_PRIVATE_RULES: ${{ vars.PRIVATE_RULES_REPO != '' && format('{0}/private-rules', github.workspace) || '' }}
+          MALWAREBAZAAR_KEY: ${{ secrets.MALWAREBAZAAR_KEY }}
+          VIRUSTOTAL_KEY: ${{ secrets.VIRUSTOTAL_KEY }}
+          CURSEFORGE_API_KEY: ${{ secrets.CURSEFORGE_API_KEY }}
+          ARGONITE_SCAN_CACHE: ~/.argonite-scan-cache
+          GITHUB_TOKEN: ${{ github.token }}
+        run: python -I scanner/run.py run --job "$JOB_ID" --max-jobs 10 --require-clamav

@@ -1,0 +1,20 @@
+import '@fontsource-variable/space-grotesk/wght.css';
+import '@fontsource-variable/geist/wght.css';
+import '@fontsource-variable/geist-mono/wght.css';
+import './styles/tokens.css';
+import './styles/base.css';
+import './styles/components.css';
+import './styles/layout.css';
+import './styles/pages.css';
+import './styles/prose.css';
+import './styles/features.css';
+import { render } from 'preact';
+import { App } from './App';
+import { initLocale } from './lib/i18n';
+import { refreshSession } from './lib/store';
+
+void refreshSession();
+await initLocale();
+const root = document.getElementById('app')!;
+root.replaceChildren();
+render(<App />, root);

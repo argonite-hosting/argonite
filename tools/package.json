@@ -1,0 +1,13 @@
+{
+  "name": "@argonite/tools",
+  "private": true,
+  "license": "AGPL-3.0-only",
+  "type": "module",
+  "scripts": {},
+  "devDependencies": {
+    "opentype.js": "2.0.0"
+  },
+  "dependencies": {
+    "@fontsource/space-grotesk": "5.3.0"
+  }
+}

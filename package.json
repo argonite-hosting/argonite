@@ -1,0 +1,28 @@
+{
+  "name": "argonite",
+  "version": "1.2.3",
+  "private": true,
+  "license": "AGPL-3.0-only",
+  "type": "module",
+  "workspaces": [
+    "web",
+    "worker",
+    "tools"
+  ],
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "sync": "node tools/sync-config.mjs",
+    "build": "npm run build -w web",
+    "typecheck": "npm run typecheck -w web && npm run typecheck -w worker",
+    "i18n": "node tools/i18n/extract.mjs"
+  },
+  "devDependencies": {
+    "typescript": "7.0.2"
+  },
+  "allowScripts": {
+    "esbuild@0.28.2": true,
+    "workerd@1.20261019.1": true
+  }
+}

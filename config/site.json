@@ -1,0 +1,38 @@
+{
+  "name": "Argonite",
+  "domain": "argonite.org",
+  "apiSubdomain": "api",
+  "tagline": "Minecraft content, verified on every download.",
+  "description": "Discover Minecraft mods, plugins, resource packs, shaders, data packs and modpacks. Every file is scanned for malware and checked against its signed fingerprint before it reaches your computer.",
+  "emails": {
+    "support": "support",
+    "security": "security",
+    "legal": "legal"
+  },
+  "github": {
+    "appSlug": "argonite-hosting",
+    "appId": 5422998,
+    "appClientId": "Iv23lix9ytCWg6aRIQEj",
+    "sourceRepo": "argonite-hosting/argonite",
+    "dataRepo": "argonite-hosting/argonite-data"
+  },
+  "cloudflare": {
+    "d1DatabaseId": "1cd91ecc-dc01-4909-baa0-211fbf9327df",
+    "apiWorkerName": "argonite-api",
+    "siteWorkerName": "argonite-site"
+  },
+  "turnstileSiteKey": "0x4AAAAAAFgVD9y7Pt9kOTAe",
+  "scanPublicKey": "HcjWmHdoHEqdWSHCADxlYZB3kP89u8wJYkfWALDIDvU=",
+  "limits": {
+    "fileMaxMB": 90,
+    "iconMaxKB": 512,
+    "galleryMaxKB": 2048,
+    "galleryMaxImages": 8,
+    "descriptionMaxChars": 50000,
+    "changelogMaxChars": 20000
+  },
+  "review": {
+    "firstUploadsNeedReview": 1,
+    "minGithubAccountAgeDays": 30
+  }
+}

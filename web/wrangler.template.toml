@@ -1,0 +1,19 @@
+# Generated into wrangler.toml by tools/sync-config.mjs. Edit config/site.json, not the output.
+# Files come straight from Cloudflare's asset store. The script in edge/ only runs for the paths in
+# run_worker_first, where it adds per-page SEO metadata.
+name = "{{siteWorkerName}}"
+main = "edge/index.ts"
+compatibility_date = "2026-10-15"
+workers_dev = false
+routes = [{ pattern = "{{siteHost}}", custom_domain = true }]
+
+[assets]
+directory = "./dist"
+binding = "ASSETS"
+not_found_handling = "single-page-application"
+html_handling = "drop-trailing-slash"
+run_worker_first = ["/project/*", "/user/*", "/organization/*", "/server/*", "/collection/*", "/sitemap.xml", "/sitemaps/*"]
+
+[[services]]
+binding = "API"
+service = "{{apiWorkerName}}"

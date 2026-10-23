@@ -1,0 +1,46 @@
+# Generated into wrangler.toml by tools/sync-config.mjs. Edit config/site.json, not the output.
+name = "{{apiWorkerName}}"
+main = "src/index.ts"
+compatibility_date = "2026-10-15"
+workers_dev = false
+routes = [{ pattern = "{{apiHost}}", custom_domain = true }]
+
+[vars]
+GITHUB_CLIENT_ID = "{{githubClientId}}"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "{{apiWorkerName}}"
+database_id = "{{d1DatabaseId}}"
+migrations_dir = "migrations"
+
+[triggers]
+crons = ["*/2 * * * *", "17 4 * * *"]
+
+[observability]
+enabled = true
+
+[[ratelimits]]
+name = "RL_READ"
+namespace_id = "41001"
+simple = { limit = 240, period = 60 }
+
+[[ratelimits]]
+name = "RL_WRITE"
+namespace_id = "41002"
+simple = { limit = 40, period = 60 }
+
+[[ratelimits]]
+name = "RL_UPLOAD"
+namespace_id = "41003"
+simple = { limit = 12, period = 60 }
+
+[[ratelimits]]
+name = "RL_DOWNLOAD"
+namespace_id = "41004"
+simple = { limit = 60, period = 60 }
+
+[[ratelimits]]
+name = "RL_AUTH"
+namespace_id = "41005"
+simple = { limit = 15, period = 60 }

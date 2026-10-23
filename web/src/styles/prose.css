@@ -1,0 +1,120 @@
+.prose {
+  color: var(--text);
+  font-size: var(--fs-base);
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+.prose > :first-child {
+  margin-top: 0;
+}
+.prose > :last-child {
+  margin-bottom: 0;
+}
+.prose h1,
+.prose h2,
+.prose h3,
+.prose h4 {
+  margin: 1.6em 0 0.6em;
+  line-height: 1.25;
+}
+.prose h1 {
+  font-size: 1.6rem;
+}
+.prose h2 {
+  font-size: 1.3rem;
+  padding-bottom: 0.3em;
+  border-bottom: 1px solid var(--border);
+}
+.prose h3 {
+  font-size: 1.1rem;
+}
+.prose h4 {
+  font-size: 1rem;
+}
+.prose p,
+.prose ul,
+.prose ol,
+.prose pre,
+.prose blockquote,
+.prose table {
+  margin: 0 0 1em;
+}
+.prose ul,
+.prose ol {
+  padding-left: 1.4em;
+}
+.prose li + li {
+  margin-top: 0.3em;
+}
+.prose a {
+  color: var(--accent-text);
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--accent-text) 35%, transparent);
+  text-underline-offset: 3px;
+}
+.prose a:hover {
+  text-decoration-color: currentColor;
+}
+.prose img {
+  max-width: 100%;
+  height: auto;
+  border-radius: var(--radius);
+}
+.prose code {
+  padding: 0.15em 0.4em;
+  border-radius: 5px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  font-size: 0.86em;
+}
+.prose pre {
+  padding: 14px 16px;
+  border-radius: var(--radius);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  overflow-x: auto;
+  line-height: 1.55;
+}
+.prose pre code {
+  padding: 0;
+  border: 0;
+  background: none;
+  font-size: var(--fs-sm);
+  white-space: pre;
+}
+.prose blockquote {
+  padding: 2px 0 2px 16px;
+  border-left: 3px solid var(--accent);
+  color: var(--text-2);
+}
+.prose hr {
+  margin: 2em 0;
+}
+.prose table {
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
+  border-collapse: collapse;
+  font-size: var(--fs-sm);
+}
+.prose th,
+.prose td {
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  text-align: left;
+}
+.prose th {
+  background: var(--surface-2);
+  font-weight: 600;
+}
+.prose details {
+  margin: 0 0 1em;
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+.prose summary {
+  cursor: pointer;
+  font-weight: 600;
+}
