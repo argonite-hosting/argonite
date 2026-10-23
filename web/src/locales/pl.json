@@ -1199,5 +1199,11 @@
     "few": "{n} zależności",
     "many": "{n} zależności",
     "other": "{n} zależności"
+  },
+  "watched {n} minutes": {
+    "one": "obserwowano {n} minutę",
+    "few": "obserwowano {n} minuty",
+    "many": "obserwowano {n} minut",
+    "other": "obserwowano {n} minuty"
   }
 }

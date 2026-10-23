@@ -1181,5 +1181,8 @@
   "Nothing suspicious happened.": "不審な動きはありませんでした。",
   "{n} dependencies": {
     "other": "依存関係 {n} 件"
+  },
+  "watched {n} minutes": {
+    "other": "{n} 分間監視"
   }
 }

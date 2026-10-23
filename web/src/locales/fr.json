@@ -1192,5 +1192,9 @@
   "{n} dependencies": {
     "one": "{n} dépendance",
     "other": "{n} dépendances"
+  },
+  "watched {n} minutes": {
+    "one": "observé {n} minute",
+    "other": "observé {n} minutes"
   }
 }

@@ -13,7 +13,7 @@ import type { Ctx, Router } from '../lib/router';
 import { MAX_DISPATCHES, MAX_RUN_ATTEMPTS, type RunRow, SANDBOX_OSES, type SandboxOs, cleanReport, dispatchRun, judge, sandboxEnabled, summaryOf, workflowFor } from '../lib/sandbox';
 import { decideVersion } from './scanner';
 
-const CLAIM_TIMEOUT_MS = 80 * 60 * 1000;
+const CLAIM_TIMEOUT_MS = 120 * 60 * 1000;
 const START_TIMEOUT_MS = 20 * 60 * 1000;
 const MAX_REPORT_BYTES = 1_048_576;
 
@@ -138,16 +138,67 @@ async function claim(ctx: Ctx): Promise<Response> {
   });
 }
 
-async function result(ctx: Ctx): Promise<Response> {
+// The run this request is about, which must be claimed by the same workflow run holding the token it was given.
+async function claimedRun(ctx: Ctx): Promise<{ run: RunRow; os: SandboxOs; body: Record<string, unknown> }> {
   const { os, ghRun } = await identify(ctx);
   const body = await readBody(ctx);
   const runId = typeof body.run === 'string' && isId(body.run) ? body.run : '';
   const claimToken = typeof body.claimToken === 'string' ? body.claimToken : '';
   const run = await ctx.env.DB.prepare("SELECT * FROM sandbox_runs WHERE id = ? AND status = 'claimed'").bind(runId).first<RunRow>();
-  // The report has to come from the same workflow run that claimed it, holding the token it was given.
   if (!run || run.os !== os || run.gh_run !== ghRun || !run.claim_hash || !safeEqual(run.claim_hash, await sha256Hex(claimToken))) {
     throw new HttpError(409, 'stale_run', 'This run is not claimed by you.');
   }
+  return { run, os, body };
+}
+
+const CURSEFORGE_CDN = new Set(['edge.forgecdn.net', 'mediafilez.forgecdn.net']);
+const CURSEFORGE_FOLDERS: Record<number, string> = { 6: 'mods', 12: 'resourcepacks', 6552: 'shaderpacks' };
+
+// CurseForge downloads need an API key, which stays here: the machine sends the pack's file ids and gets
+// back names, links, hashes and which side each file is for.
+async function curseforgeFiles(ctx: Ctx): Promise<Response> {
+  const { body } = await claimedRun(ctx);
+  const ids = [...new Set((Array.isArray(body.files) ? body.files : []).filter((x): x is number => Number.isSafeInteger(x) && (x as number) > 0))].slice(0, 600);
+  if (!ctx.env.CURSEFORGE_API_KEY || !ids.length) return json({ files: {} });
+  const cf = async <T>(path: string, payload: unknown): Promise<T[]> => {
+    const res = await fetch(`https://api.curseforge.com${path}`, {
+      method: 'POST',
+      headers: { 'x-api-key': ctx.env.CURSEFORGE_API_KEY!, Accept: 'application/json', 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) throw new HttpError(502, 'upstream_failed', `CurseForge answered ${res.status}.`);
+    return ((await res.json()) as { data?: T[] }).data ?? [];
+  };
+  type CfFile = { id: number; modId: number; fileName: string; downloadUrl: string | null; fileLength: number; hashes?: { value: string; algo: number }[]; gameVersions?: string[] };
+  const files: CfFile[] = [];
+  for (let i = 0; i < ids.length; i += 200) files.push(...(await cf<CfFile>('/v1/mods/files', { fileIds: ids.slice(i, i + 200) })));
+  const modIds = [...new Set(files.map((f) => f.modId))];
+  const classes = new Map<number, number>();
+  for (let i = 0; i < modIds.length; i += 200) for (const m of await cf<{ id: number; classId: number }>('/v1/mods', { modIds: modIds.slice(i, i + 200) })) classes.set(m.id, m.classId);
+  const out: Record<string, unknown> = {};
+  for (const f of files) {
+    let url: string | null = null;
+    try {
+      url = f.downloadUrl && CURSEFORGE_CDN.has(new URL(f.downloadUrl).hostname) && f.downloadUrl.startsWith('https://') ? f.downloadUrl : null;
+    } catch {
+      url = null;
+    }
+    const versions = f.gameVersions ?? [];
+    out[String(f.id)] = {
+      name: String(f.fileName).slice(0, 200),
+      url,
+      sha1: f.hashes?.find((h) => h.algo === 1)?.value ?? null,
+      size: f.fileLength,
+      folder: CURSEFORGE_FOLDERS[classes.get(f.modId) ?? 6] ?? 'mods',
+      client: !versions.includes('Server') || versions.includes('Client'),
+      server: !versions.includes('Client') || versions.includes('Server'),
+    };
+  }
+  return json({ files: out });
+}
+
+async function result(ctx: Ctx): Promise<Response> {
+  const { run, os, body } = await claimedRun(ctx);
   const report = cleanReport(body.report);
   const now = Date.now();
   // Only the Linux run is required, so only it gets a second try; the others' errors are simply ignored.
@@ -222,4 +273,5 @@ export async function sweepSandbox(env: Env): Promise<void> {
 export function sandboxRoutes(r: Router): void {
   r.post('/internal/sandbox/claim', claim);
   r.post('/internal/sandbox/result', result);
+  r.post('/internal/sandbox/curseforge', curseforgeFiles);
 }

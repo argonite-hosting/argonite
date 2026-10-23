@@ -95,6 +95,7 @@ export function SandboxList({ runs }: { runs?: SandboxSummary[] }) {
                     r.server ? t('Server started') : t('Server didn’t start'),
                     r.joined ? t('Client joined') : r.client ? t('Client started') : t('Client not run'),
                     r.dependencies ? tn(r.dependencies, '{n} dependency', '{n} dependencies') : '',
+                    r.watched >= 60 ? tn(Math.round(r.watched / 60), 'watched {n} minute', 'watched {n} minutes') : '',
                   ]
                     .filter(Boolean)
                     .join(' · ')}

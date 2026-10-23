@@ -162,6 +162,8 @@ export interface SandboxSummary {
   client: boolean;
   joined: boolean;
   dependencies: number;
+  // Seconds the game was watched after it had booted into a world.
+  watched: number;
   findings: Finding[];
   finishedAt: number | null;
 }

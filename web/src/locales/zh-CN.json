@@ -1181,5 +1181,8 @@
   "Nothing suspicious happened.": "没有发生可疑行为。",
   "{n} dependencies": {
     "other": "{n} 个依赖"
+  },
+  "watched {n} minutes": {
+    "other": "观察了 {n} 分钟"
   }
 }

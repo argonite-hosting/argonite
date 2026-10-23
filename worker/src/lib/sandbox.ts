@@ -80,6 +80,7 @@ export interface SandboxReport {
   persistence: { where: string; detail: string }[];
   writtenOutside: string[];
   depHosts: string[];
+  watched: number;
   log: string;
 }
 
@@ -155,6 +156,7 @@ export function cleanReport(raw: unknown): SandboxReport {
     }),
     writtenOutside: list(r.writtenOutside, 100, (p) => str(p, 300) || null),
     depHosts: list(r.depHosts, 2000, host),
+    watched: typeof r.watched === 'number' && Number.isFinite(r.watched) ? Math.max(0, Math.min(7200, Math.round(r.watched))) : 0,
     log: str(r.log, 30_000),
   };
 }
@@ -252,6 +254,7 @@ export function summaryOf(os: SandboxOs, r: SandboxReport): SandboxSummary {
     client: r.client.started,
     joined: r.client.joined,
     dependencies: r.env.deps.length,
+    watched: r.watched,
     findings: [],
     finishedAt: null,
   };
@@ -319,6 +322,7 @@ export function summariesOf(rows: SummaryRow[]): SandboxSummary[] {
         client: base?.client ?? false,
         joined: base?.joined ?? false,
         dependencies: base?.dependencies ?? 0,
+        watched: base?.watched ?? 0,
         findings: parseJson<Finding[]>(r.findings, []),
         finishedAt: r.finished_at,
       };
