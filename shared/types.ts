@@ -111,6 +111,15 @@ export interface FileInfo {
   releaseId: number;
   assetId: number;
   scannedAt: number;
+  // Native libraries or programs bundled inside the file. Code outside the Java sandbox.
+  nativeFiles: number;
+}
+
+export interface NativeFile {
+  path: string;
+  sha256: string;
+  size: number;
+  platform: 'windows' | 'linux' | 'macos' | 'unknown';
 }
 
 export interface Dependency {
@@ -135,6 +144,7 @@ export interface ScanSummary {
   capabilities: string[];
   engines: string[];
   scannedAt: number | null;
+  natives: NativeFile[];
 }
 
 export interface Version {

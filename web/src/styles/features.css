@@ -895,3 +895,28 @@ details > summary:hover {
   min-height: 48px;
   background: var(--surface-2);
 }
+
+/* Native files in scan reports */
+.native-list {
+  display: grid;
+  gap: 6px;
+  margin: 10px 0;
+  font-size: var(--fs-sm);
+}
+.native-list ul {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.native-list li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.native-list .finding-path {
+  overflow-wrap: anywhere;
+}

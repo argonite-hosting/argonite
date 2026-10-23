@@ -20,6 +20,38 @@ export function Avatar({ src, name, size = 'md' }: { src: string | null | undefi
   return <img class={cls} src={src} alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" onError={() => setBroken(true)} />;
 }
 
+// Shown wherever a version is offered: native libraries run outside Java's sandbox.
+export function NativeBadge({ version }: { version: { files: { nativeFiles: number }[] } }) {
+  if (!version.files.some((f) => f.nativeFiles > 0)) return null;
+  return (
+    <span class="badge badge-warning" title={t('This version bundles native libraries or programs. They run outside Java’s sandbox, so moderators review them.')}>
+      <Icon name="cpu" /> {t('Native code')}
+    </span>
+  );
+}
+
+// The native files inside a scanned file, for owners and moderators.
+export function NativeList({ natives }: { natives: { path: string; sha256: string; size: number; platform: string }[] }) {
+  if (!natives.length) return null;
+  const platform: Record<string, string> = { windows: 'Windows', linux: 'Linux', macos: 'macOS', unknown: t('Unknown') };
+  return (
+    <div class="native-list">
+      <strong>{t('Native files')}</strong>
+      <ul>
+        {natives.map((n) => (
+          <li key={n.path}>
+            <span class="badge">{platform[n.platform] ?? n.platform}</span>
+            <span class="mono finding-path">{n.path}</span>
+            <span class="mono muted" title={n.sha256}>
+              {n.sha256.slice(0, 12)}…
+            </span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 // An image from an author's repository, shown only once it matches its recorded SHA-256.
 export function VerifiedImg({ src, alt = '', class: cls, loading }: { src: string | null; alt?: string; class?: string; loading?: 'lazy' | 'eager' }) {
   const verified = useVerifiedImage(src);

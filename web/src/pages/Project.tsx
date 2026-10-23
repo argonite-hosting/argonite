@@ -11,7 +11,7 @@ import { Icon, type IconName } from '../components/Icon';
 import { Markdown } from '../components/Markdown';
 import { PackContents } from '../components/PackContents';
 import { ReportDialog } from '../components/ReportDialog';
-import { Alert, Avatar, ChannelBadge, CopyField, Empty, Menu, Modal, PageLoading, ProjectIcon, Spinner, Tabs, useAsync, VerifiedImg } from '../components/ui';
+import { Alert, Avatar, ChannelBadge, CopyField, Empty, Menu, Modal, PageLoading, ProjectIcon, Spinner, NativeBadge, Tabs, useAsync, VerifiedImg } from '../components/ui';
 import { SITE, API_URL } from '../config';
 import { ApiError, api, loginUrl, pub } from '../lib/api';
 import { signatureValid } from '../lib/download';
@@ -134,6 +134,7 @@ function QuickDownload({ versions, slug, project }: { versions: Version[]; slug:
           <DownloadButton version={pick} label={t('Download {version}', { version: pick.versionNumber })} size="btn-lg" variant="btn-primary btn-block" />
           <span class="quick-dl-meta">
             <ChannelBadge channel={pick.channel} />
+            <NativeBadge version={pick} />
             <span>
               {bytes(pick.file!.size)} · {date(pick.publishedAt)}
             </span>
@@ -560,6 +561,7 @@ function ChangelogTab({ versions, slug }: { versions: Version[]; slug: string })
                 <strong>{v.name}</strong>
               </Link>
               <ChannelBadge channel={v.channel} />
+              <NativeBadge version={v} />
               <span class="muted">{date(v.publishedAt)}</span>
             </div>
             <Markdown source={v.changelog} empty={t('No changelog provided.')} />
@@ -751,6 +753,7 @@ function VersionView({ project, version, onReport, onChanged }: { project: Proje
           <div class="version-title">
             <h2>{version.name}</h2>
             <ChannelBadge channel={version.channel} />
+            <NativeBadge version={version} />
           </div>
           <p class="muted">
             <span class="mono">{version.versionNumber}</span> · {t('published {date} by', { date: date(version.publishedAt) })}{' '}

@@ -1,6 +1,6 @@
 import { sortGameVersionsDesc } from '../../../shared/gameversions';
 import type { Channel, CommentMode, DependencyKind, FileKind, ProjectStatus, ProjectType, Side, VersionStatus } from '../../../shared/taxonomy';
-import type { Dependency, FileInfo, Finding, GalleryImage, Member, OrgRef, Project, ProjectSummary, ScanSummary, Version } from '../../../shared/types';
+import type { Dependency, FileInfo, Finding, GalleryImage, Member, OrgRef, Project, NativeFile, ProjectSummary, ScanSummary, Version } from '../../../shared/types';
 import { isId } from '../../../shared/validate';
 import type { Env } from '../env';
 import { rawUrl } from './github';
@@ -198,6 +198,7 @@ export interface FileRow {
   findings: string | null;
   capabilities: string | null;
   engines: string | null;
+  natives: string | null;
   position: number;
 }
 
@@ -239,6 +240,8 @@ function fileInfo(f: FileRow, repoId: number, releaseId: number): FileInfo | nul
     releaseId,
     assetId: f.asset_id,
     scannedAt: f.scanned_at,
+    // Files scanned before natives were listed only carry the native_code tag.
+    nativeFiles: f.natives !== null ? parseJson<NativeFile[]>(f.natives, []).length : parseJson<string[]>(f.capabilities, []).includes('native_code') ? 1 : 0,
   };
 }
 
@@ -249,6 +252,7 @@ function scanOf(f: FileRow): ScanSummary {
     capabilities: parseJson<string[]>(f.capabilities, []),
     engines: parseJson<string[]>(f.engines, []),
     scannedAt: f.scanned_at,
+    natives: parseJson<NativeFile[]>(f.natives, []),
   };
 }
 
@@ -288,7 +292,7 @@ export async function loadVersions(env: Env, q: VersionQuery): Promise<Version[]
        WHERE d.version_id IN (${scope})`,
     ).bind(...binds),
     env.DB.prepare(
-      `SELECT id, version_id, kind, asset_id, filename, size, sha1, sha256, sha512, signature, scanned_at, verdict, findings, capabilities, engines, position
+      `SELECT id, version_id, kind, asset_id, filename, size, sha1, sha256, sha512, signature, scanned_at, verdict, findings, capabilities, engines, natives, position
        FROM files WHERE version_id IN (${scope}) ORDER BY kind = 'primary' DESC, position, created_at`,
     ).bind(...binds),
   ]);
@@ -348,7 +352,7 @@ export async function loadVersions(env: Env, q: VersionQuery): Promise<Version[]
       releaseUrl: r.release_id ? `https://github.com/${r.repo_full_name}/releases/tag/${encodeURIComponent(r.tag)}` : null,
       ...(q.includeScan
         ? {
-            scan: primaryRow ? scanOf(primaryRow) : { verdict: null, findings: [], capabilities: [], engines: [], scannedAt: null },
+            scan: primaryRow ? scanOf(primaryRow) : { verdict: null, findings: [], capabilities: [], engines: [], scannedAt: null, natives: [] },
             scans: Object.fromEntries(fileRows.map((f) => [f.id, { ...scanOf(f), filename: f.filename, kind: f.kind, uploaded: f.asset_id !== null }])),
             publishPending: r.publish_pending === 1,
           }

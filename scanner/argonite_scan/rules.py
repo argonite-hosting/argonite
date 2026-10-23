@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import re
@@ -10,7 +11,7 @@ from dataclasses import dataclass, field
 from . import classfile
 from .archive import WalkResult
 
-EXECUTABLE_SUFFIXES = (".exe", ".dll", ".scr", ".msi", ".bat", ".cmd", ".ps1", ".vbs", ".vbe", ".jse", ".wsf", ".hta", ".lnk")
+EXECUTABLE_SUFFIXES = (".exe", ".scr", ".msi", ".bat", ".cmd", ".ps1", ".vbs", ".vbe", ".jse", ".wsf", ".hta", ".lnk")
 NATIVE_SUFFIXES = (".so", ".dylib", ".jnilib", ".dll")
 SCRIPT_SUFFIXES = (".sh", ".command", ".py", ".rb", ".pl")
 PACK_BANNED_SUFFIXES = SCRIPT_SUFFIXES + (".js", ".apk", ".appimage", ".deb", ".rpm", ".pkg", ".dmg", ".msix", ".jnlp")
@@ -21,8 +22,10 @@ def binary_kind(data: bytes) -> str | None:
     """Recognise executables by their first bytes, whatever the file happens to be called."""
     head = data[:64]
     if head[:4] == b"\xca\xfe\xba\xbe":
-        # Java classes and Mach-O fat binaries share this magic; either way it's code.
-        return "java"
+        # Java classes and macOS universal ("fat") binaries share this magic. A class file follows it with
+        # its version (major 45 or more); a universal binary with its number of architectures (a handful).
+        arches = int.from_bytes(head[4:8], "big")
+        return "macos" if 0 < arches <= 30 else "java"
     if head[:2] == b"MZ" and len(data) > 0x40:
         offset = int.from_bytes(data[0x3C:0x40], "little")
         if 0 < offset < len(data) - 4 and data[offset:offset + 4] == b"PE\x00\x00":
@@ -129,6 +132,8 @@ class Report:
     findings: list[dict] = field(default_factory=list)
     capabilities: set[str] = field(default_factory=set)
     class_count: int = 0
+    # Every bundled native library or program: path, sha256, size and platform.
+    natives: list[dict] = field(default_factory=list)
 
     def add(self, rule: str, severity: str, detail: str, path: str | None = None) -> None:
         if len(self.findings) >= 200:
@@ -194,17 +199,24 @@ def analyse(walked: WalkResult, project_type: str, iocs: dict[str, list[str]]) -
             if leaf.endswith(TEXT_SUFFIXES):
                 _scan_text(entry.data, entry.path, report, ioc_strings)
             continue
+        native = kind in ("windows", "linux", "macos") or leaf.endswith(NATIVE_SUFFIXES)
         if kind in ("windows", "linux", "macos") and not leaf.endswith(EXECUTABLE_SUFFIXES + NATIVE_SUFFIXES):
             report.add("file.disguised_executable", "high", f"A {kind} program is hidden under another file extension", entry.path)
+        if native or leaf.endswith(EXECUTABLE_SUFFIXES):
+            # Native code runs outside the Java sandbox and can't be inspected like bytecode, so every
+            # native file gets a human look, and its hash is kept to spot swaps between versions.
             report.capabilities.add("native_code")
+            if len(report.natives) < 200:
+                report.natives.append({
+                    "path": entry.path,
+                    "sha256": hashlib.sha256(entry.data).hexdigest(),
+                    "size": len(entry.data),
+                    "platform": kind if kind in ("windows", "linux", "macos") else "unknown",
+                })
         if leaf.endswith(EXECUTABLE_SUFFIXES):
-            native_dll = leaf.endswith(".dll") and code_expected
-            report.add("file.executable" if not native_dll else "file.native_library", "high", f"Bundles {leaf.rsplit('.', 1)[-1]} file", entry.path)
-            if native_dll:
-                report.capabilities.add("native_code")
-        elif leaf.endswith(NATIVE_SUFFIXES):
-            report.add("file.native_library", "high" if not code_expected else "medium", "Bundles a native library", entry.path)
-            report.capabilities.add("native_code")
+            report.add("file.executable", "high", f"Bundles {leaf.rsplit('.', 1)[-1]} file", entry.path)
+        elif native:
+            report.add("file.native_library", "high", "Bundles a native library", entry.path)
         elif leaf.endswith(SCRIPT_SUFFIXES):
             report.add("file.script", "medium", "Bundles a script file", entry.path)
 

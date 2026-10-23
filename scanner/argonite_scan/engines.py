@@ -80,7 +80,7 @@ def _post_form(url: str, fields: dict[str, str], headers: dict[str, str]) -> dic
         return json.loads(res.read().decode())
 
 
-def malwarebazaar(sha256: str, report: Report) -> bool:
+def malwarebazaar(sha256: str, report: Report, path: str | None = None) -> bool:
     key = os.environ.get("MALWAREBAZAAR_KEY")
     if not key:
         return False
@@ -90,11 +90,11 @@ def malwarebazaar(sha256: str, report: Report) -> bool:
         return False
     if data.get("query_status") == "ok":
         sig = (data.get("data") or [{}])[0].get("signature") or "known malware"
-        report.add("reputation.malwarebazaar", "critical", f"Hash is listed on MalwareBazaar ({str(sig)[:80]})")
+        report.add("reputation.malwarebazaar", "critical", f"Hash is listed on MalwareBazaar ({str(sig)[:80]})", path)
     return True
 
 
-def virustotal(sha256: str, report: Report) -> bool:
+def virustotal(sha256: str, report: Report, path: str | None = None) -> bool:
     key = os.environ.get("VIRUSTOTAL_KEY")
     if not key:
         return False
@@ -108,7 +108,7 @@ def virustotal(sha256: str, report: Report) -> bool:
         return False
     malicious = int(stats.get("malicious", 0))
     if malicious >= 3:
-        report.add("reputation.virustotal", "critical", f"{malicious} VirusTotal engines flag this hash")
+        report.add("reputation.virustotal", "critical", f"{malicious} VirusTotal engines flag this hash", path)
     elif malicious > 0:
-        report.add("reputation.virustotal", "high", f"{malicious} VirusTotal engine(s) flag this hash")
+        report.add("reputation.virustotal", "high", f"{malicious} VirusTotal engine(s) flag this hash", path)
     return True

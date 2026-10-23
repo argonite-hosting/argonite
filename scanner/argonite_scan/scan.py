@@ -8,6 +8,11 @@ from typing import Callable
 from . import archive, engines, metadata, rules
 from .modpack import bundled_files
 
+# Reputation lookups for natives inside a file. VirusTotal's free tier allows 4 requests a minute, so it
+# only sees the first few; MalwareBazaar has no such limit.
+NATIVE_MB_LOOKUPS = 30
+NATIVE_VT_LOOKUPS = 3
+
 SEVERITY_RANK = {"info": 0, "low": 1, "medium": 2, "high": 3, "critical": 4}
 HERE = os.path.dirname(os.path.abspath(__file__))
 PUBLIC_RULES = os.path.join(os.path.dirname(HERE), "rules")
@@ -72,6 +77,15 @@ def scan_bytes(
             used.append("malwarebazaar")
         if engines.virustotal(digests["sha256"], report):
             used.append("virustotal")
+        # The same lookups for each bundled native, so a known-bad library inside a new jar is still caught.
+        seen: set[str] = set()
+        for i, native in enumerate(n for n in report.natives if not (n["sha256"] in seen or seen.add(n["sha256"]))):
+            if native["sha256"] in iocs["sha256"]:
+                report.add("ioc.hash", "critical", "Bundled native matches known malware", native["path"])
+            if i < NATIVE_MB_LOOKUPS:
+                engines.malwarebazaar(native["sha256"], report, native["path"])
+            if i < NATIVE_VT_LOOKUPS:
+                engines.virustotal(native["sha256"], report, native["path"])
 
     pack_info = {"pack_files": meta.pop("pack_files", None), "pack_minecraft": meta.pop("pack_minecraft", None), "pack_loaders": meta.pop("pack_loaders", None)}
     contents = None
@@ -87,7 +101,7 @@ def scan_bytes(
         "findings": findings,
         "capabilities": sorted(report.capabilities),
         "engines": used,
-        "metadata": {**meta, "classes": report.class_count, "entries": len(walked.entries)},
+        "metadata": {**meta, "classes": report.class_count, "entries": len(walked.entries), "natives": report.natives},
         "contents": contents,
     }
 
