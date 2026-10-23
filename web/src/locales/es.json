@@ -1090,7 +1090,6 @@
   "We have flagged this version for review.": "Hemos marcado esta versión para revisión.",
   "Website": "Sitio web",
   "Websites it links to": "Sitios web a los que enlaza",
-  "We’re unpacking them and checking them with ClamAV, YARA and our bytecode rules. This usually takes one to three minutes. You can leave this page; the result also appears on your dashboard.": "Los estamos descomprimiendo y revisando con ClamAV, YARA y nuestras reglas de bytecode. Suele tardar de uno a tres minutos. Puedes salir de esta página; el resultado también aparece en tu panel.",
   "What are you publishing?": "¿Qué vas a publicar?",
   "What changed in this version?": "¿Qué cambió en esta versión?",
   "What gets removed": "Lo que se elimina",
@@ -1196,5 +1195,6 @@
   "watched {n} minutes": {
     "one": "observado {n} minuto",
     "other": "observado {n} minutos"
-  }
+  },
+  "We’re scanning your files. This can take from a few minutes up to about an hour. You can leave this page; the result also appears on your dashboard.": "Estamos analizando tus archivos. Puede tardar desde unos minutos hasta cerca de una hora. Puedes salir de esta página; el resultado también aparece en tu panel."
 }

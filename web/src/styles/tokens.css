@@ -37,8 +37,8 @@
   --header-h: 60px;
 
   --ease: cubic-bezier(0.16, 1, 0.3, 1);
-  --fast: 120ms;
-  --med: 200ms;
+  --fast: 180ms;
+  --med: 320ms;
 
   color-scheme: light;
   --bg: oklch(98.4% 0.004 250);

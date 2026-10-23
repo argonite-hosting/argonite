@@ -372,7 +372,7 @@ function UploadForm({ slug, onReset }: { slug: string; onReset: () => void }) {
             <h2>{t('Scanning your files')}</h2>
           </div>
           <p class="muted">
-            {t('We’re unpacking them and checking them with ClamAV, YARA and our bytecode rules. This usually takes one to three minutes. You can leave this page; the result also appears on your dashboard.')}
+            {t('We’re scanning your files. This can take from a few minutes up to about an hour. You can leave this page; the result also appears on your dashboard.')}
           </p>
         </section>
       )}

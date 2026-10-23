@@ -1086,7 +1086,6 @@
   "We have flagged this version for review.": "我们已将此版本标记为待审核。",
   "Website": "网站",
   "Websites it links to": "其中链接的网站",
-  "We’re unpacking them and checking them with ClamAV, YARA and our bytecode rules. This usually takes one to three minutes. You can leave this page; the result also appears on your dashboard.": "我们正在解包，并用 ClamAV、YARA 和我们的字节码规则进行检查。通常需要一到三分钟。你可以离开此页面，结果也会显示在你的控制面板中。",
   "What are you publishing?": "你要发布什么？",
   "What changed in this version?": "此版本有哪些变化？",
   "What gets removed": "会被移除的内容",
@@ -1184,5 +1183,6 @@
   },
   "watched {n} minutes": {
     "other": "观察了 {n} 分钟"
-  }
+  },
+  "We’re scanning your files. This can take from a few minutes up to about an hour. You can leave this page; the result also appears on your dashboard.": "我们正在扫描你的文件。这可能需要几分钟到大约一小时。你可以离开此页面；结果也会显示在你的控制面板中。"
 }

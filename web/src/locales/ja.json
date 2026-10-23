@@ -1086,7 +1086,6 @@
   "We have flagged this version for review.": "このバージョンを審査対象にしました。",
   "Website": "ウェブサイト",
   "Websites it links to": "リンク先のウェブサイト",
-  "We’re unpacking them and checking them with ClamAV, YARA and our bytecode rules. This usually takes one to three minutes. You can leave this page; the result also appears on your dashboard.": "ファイルを展開し、ClamAV、YARA、独自のバイトコードルールで確認しています。通常 1〜3 分ほどかかります。このページを離れても大丈夫です。結果はダッシュボードにも表示されます。",
   "What are you publishing?": "何を公開しますか？",
   "What changed in this version?": "このバージョンの変更点は？",
   "What gets removed": "削除されるもの",
@@ -1184,5 +1183,6 @@
   },
   "watched {n} minutes": {
     "other": "{n} 分間監視"
-  }
+  },
+  "We’re scanning your files. This can take from a few minutes up to about an hour. You can leave this page; the result also appears on your dashboard.": "ファイルをスキャンしています。数分から 1 時間ほどかかることがあります。このページを離れても構いません。結果はダッシュボードにも表示されます。"
 }
