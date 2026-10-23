@@ -86,9 +86,9 @@ async function finishRun(env: Env, run: Pick<RunRow, 'id' | 'version_id'>, error
   await decideWhenSettled(env, run.version_id);
 }
 
+// Tests no longer hold a version back; this only finishes versions uploaded while they still did.
 async function decideWhenSettled(env: Env, versionId: string): Promise<void> {
-  const open = await env.DB.prepare("SELECT COUNT(*) AS n FROM sandbox_runs WHERE version_id = ? AND status IN ('queued', 'claimed')").bind(versionId).first<{ n: number }>();
-  if ((open?.n ?? 0) === 0) await decideVersion(env, versionId);
+  await decideVersion(env, versionId);
 }
 
 async function claim(ctx: Ctx): Promise<Response> {

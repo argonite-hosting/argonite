@@ -9,7 +9,7 @@ import { audit } from '../lib/guard';
 import { dispatchScan, gh, repoPath } from '../lib/github';
 import { goLive } from '../lib/publish';
 import { sweepSandbox } from './sandbox';
-import { MAX_ATTEMPTS } from './scanner';
+import { MAX_ATTEMPTS, decideVersion } from './scanner';
 import { pingDue } from './servers';
 
 const MANIFEST = 'https://piston-meta.mojang.com/mc/game/version_manifest_v2.json';
@@ -66,6 +66,20 @@ async function sweepScans(env: Env): Promise<void> {
     .bind(now - 5 * 60 * 1000, now - 30 * 60 * 1000)
     .first<{ n: number }>();
   if ((waiting?.n ?? 0) > 0) await dispatchScan(env).catch(() => false);
+}
+
+// A version whose files all have their fingerprints but that is still marked as scanning (an upload
+// from before tests stopped holding versions back, or a decision that was cut short) gets decided now.
+async function finishScannedVersions(env: Env): Promise<void> {
+  const stuck = await env.DB.prepare(
+    `SELECT v.id FROM versions v WHERE v.status = 'scanning' AND v.created_at < ?
+       AND EXISTS (SELECT 1 FROM files f WHERE f.version_id = v.id)
+       AND NOT EXISTS (SELECT 1 FROM files f WHERE f.version_id = v.id AND f.sha256 IS NULL)
+     LIMIT 20`,
+  )
+    .bind(Date.now() - 10 * 60 * 1000)
+    .all<{ id: string }>();
+  for (const v of stuck.results) await decideVersion(env, v.id);
 }
 
 async function sweepAbandonedUploads(env: Env): Promise<void> {
@@ -132,6 +146,7 @@ export async function runCron(cron: string, env: Env, scheduledTime = Date.now()
   }
   if (new Date(scheduledTime).getUTCMinutes() % 10 >= 2) return;
   await sweepScans(env);
+  await finishScannedVersions(env).catch((e) => console.error(JSON.stringify({ cron: 'decide', error: String(e) })));
   await sweepSandbox(env).catch((e) => console.error(JSON.stringify({ cron: 'sandbox', error: String(e) })));
   await sweepAbandonedUploads(env);
   await hashStoredImages(env).catch((e) => console.error(JSON.stringify({ cron: 'images', error: String(e) })));
