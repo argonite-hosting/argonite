@@ -13,6 +13,7 @@ import { listParam, pageParams } from '../lib/input';
 import type { Ctx, Router } from '../lib/router';
 import { scanKey } from '../lib/runtime';
 import { adminIds } from '../env';
+import { blockedLinks } from '../lib/linkcheck';
 import { ensureGameVersions } from './cron';
 
 const PUBLIC_STATUSES = "('active', 'delisted')";
@@ -658,7 +659,14 @@ function sitemapExtras(ctx: Ctx): Promise<Response> {
   });
 }
 
+// Sites and URLs found on a malware or phishing list after content linking to them was published.
+// The site disables those links when it renders descriptions, comments and profile links.
+async function blockedLinkList(ctx: Ctx): Promise<Response> {
+  return cached(ctx, 600, async () => json(await blockedLinks(ctx.env)));
+}
+
 export function publicRoutes(r: Router): void {
+  r.get('/v1/blocked-links', blockedLinkList);
   r.get('/v1/sitemap/extras', sitemapExtras);
   r.get('/v1/projects', bulkProjects);
   r.get('/v1/versions', bulkVersions);

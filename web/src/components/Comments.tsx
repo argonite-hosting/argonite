@@ -11,6 +11,7 @@ import { errorToast, isStaff, toast, useSession } from '../lib/store';
 import { Icon } from './Icon';
 import { ReportDialog } from './ReportDialog';
 import { Alert, Avatar, Empty, Menu, Modal, Spinner } from './ui';
+import { safeHref, useBlockedLinks } from '../lib/blockedLinks';
 
 const MAX = 2000;
 const EDIT_WINDOW_MS = 24 * 3600 * 1000;
@@ -35,11 +36,12 @@ async function loadPage(ref: CommentPageRef, projectId: string): Promise<Comment
 
 // Plain text with https links made clickable. Nothing is ever parsed as HTML.
 function Body({ text }: { text: string }) {
+  const blocked = useBlockedLinks();
   const parts = text.split(/(https:\/\/[^\s<>"']+[^\s<>"'.,;:!?)\]])/g);
   return (
     <p class="comment-text">
       {parts.map((p, i) =>
-        i % 2 === 1 ? (
+        i % 2 === 1 && safeHref(p, blocked) ? (
           <a key={i} href={p} target="_blank" rel="nofollow ugc noopener noreferrer">
             {p}
           </a>

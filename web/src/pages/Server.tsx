@@ -13,8 +13,10 @@ import { t } from '../lib/i18n';
 import { Link } from '../lib/router';
 import { errorToast, isStaff, toast, useSession } from '../lib/store';
 import { PlayerCount, ServerFavicon } from './Servers';
+import { safeHref, useBlockedLinks } from '../lib/blockedLinks';
 
 export default function ServerPage({ params }: { params: Record<string, string> }) {
+  const blocked = useBlockedLinks();
   const { user } = useSession();
   const { data, error, loading, reload } = useAsync(() => pub<ServerListing>(`/v1/servers/${encodeURIComponent(params.slug)}`), [params.slug]);
   const [fresh, setFresh] = useState<ServerListing | null>(null);
@@ -77,13 +79,13 @@ export default function ServerPage({ params }: { params: Record<string, string> 
             ))}
           </div>
           <div class="row-actions project-head-actions">
-            {s.links.website && (
-              <a class="btn" href={s.links.website} target="_blank" rel="noopener noreferrer nofollow ugc">
+            {safeHref(s.links.website, blocked) && (
+              <a class="btn" href={s.links.website!} target="_blank" rel="noopener noreferrer nofollow ugc">
                 <Icon name="globe" /> {t('Website')}
               </a>
             )}
-            {s.links.discord && (
-              <a class="btn" href={s.links.discord} target="_blank" rel="noopener noreferrer nofollow ugc">
+            {safeHref(s.links.discord, blocked) && (
+              <a class="btn" href={s.links.discord!} target="_blank" rel="noopener noreferrer nofollow ugc">
                 <Icon name="message" /> Discord
               </a>
             )}

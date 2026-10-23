@@ -21,6 +21,18 @@ type ApiResult<T> = { ok: true; data: T } | { ok: false; status: number };
 const SLUG = /^[A-Za-z0-9-]{1,48}$/;
 const USERNAME = /^[A-Za-z0-9-]{1,39}$/;
 
+function linkBlocked(href: string, list: { hosts: string[]; urls: string[] }): boolean {
+  try {
+    const url = new URL(href);
+    url.hash = '';
+    if (list.urls.includes(url.href)) return true;
+    const parts = url.hostname.toLowerCase().split('.');
+    return parts.some((_, i) => i < parts.length - 1 && list.hosts.includes(parts.slice(i).join('.')));
+  } catch {
+    return true;
+  }
+}
+
 async function api<T>(env: Env, request: Request, path: string): Promise<ApiResult<T>> {
   const headers = new Headers({ Accept: 'application/json' });
   // Rate limits on the API are per visitor, so pass the visitor's address along.
@@ -144,7 +156,7 @@ function projectJsonLd(project: Project, versions: Version[], url: string): obje
       name: project.name,
       description: project.summary,
       url,
-      ...(project.iconUrl ? { image: project.iconUrl } : {}),
+      ...(project.iconUrl ? { image: project.iconUrl.split('#')[0] } : {}),
       applicationCategory: 'GameApplication',
       applicationSubCategory: `Minecraft ${typeLabel(project.type)}`,
       keywords: projectFacts(project),
@@ -175,13 +187,16 @@ async function projectPage(env: Env, request: Request, key: string, rest: string
   const versionId = tab === 'version' ? rest.slice('/version/'.length) : '';
   if (tab === 'version' && !isId(versionId)) return notFound(env, request, 'Version');
 
-  const [p, v] = await Promise.all([
+  const [p, v, blocked] = await Promise.all([
     api<Project>(env, request, `/v1/projects/${encodeURIComponent(key.toLowerCase())}`),
     api<{ versions: Version[] }>(env, request, `/v1/projects/${encodeURIComponent(key.toLowerCase())}/versions`),
+    api<{ hosts: string[]; urls: string[] }>(env, request, '/v1/blocked-links'),
   ]);
   if (!p.ok) return p.status === 404 ? notFound(env, request, 'Project') : unavailable(env, request);
   if (!v.ok) return unavailable(env, request);
   const project = p.data;
+  // Leave out a source link whose site has since been found on a malware or phishing list.
+  if (project.links.source && (!blocked.ok || linkBlocked(project.links.source, blocked.data))) project.links.source = null;
   if (key !== project.slug) return redirect(request, `/project/${project.slug}${rest}`);
 
   const versions = [...v.data.versions].sort((a, b) => (b.publishedAt ?? b.createdAt) - (a.publishedAt ?? a.createdAt));
@@ -192,11 +207,11 @@ async function projectPage(env: Env, request: Request, key: string, rest: string
   const head = baseHead(path, projectHead(project, tab, version));
   const shot = project.gallery[0];
   if (shot) {
-    head.image = shot.url;
+    head.image = shot.url.split('#')[0];
     head.imageAlt = shot.title ?? `${project.name} screenshot`;
     head.imageSize = undefined;
   } else if (project.iconUrl) {
-    head.image = project.iconUrl;
+    head.image = project.iconUrl.split('#')[0];
     head.imageAlt = `${project.name} icon`;
     head.imageSize = undefined;
     head.card = 'summary';

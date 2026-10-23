@@ -13,6 +13,7 @@ import { useHead } from '../lib/head';
 import { t, tn } from '../lib/i18n';
 import { Link } from '../lib/router';
 import { useSession } from '../lib/store';
+import { safeHref, useBlockedLinks } from '../lib/blockedLinks';
 
 interface Profile {
   user: UserPublic;
@@ -21,6 +22,7 @@ interface Profile {
 }
 
 export default function UserPage({ params }: { params: Record<string, string> }) {
+  const blocked = useBlockedLinks();
   const { user: me } = useSession();
   const { data, error, loading } = useAsync(() => pub<Profile>(`/v1/users/${encodeURIComponent(params.username)}`), [params.username]);
   const collections = useAsync(() => pub<{ collections: CollectionSummary[] }>(`/v1/users/${encodeURIComponent(params.username)}/collections`), [params.username]);
@@ -63,7 +65,7 @@ export default function UserPage({ params }: { params: Record<string, string> })
           </div>
           {links?.length > 0 && (
             <ul class="profile-links">
-              {links.map((l) => (
+              {links.filter((l) => safeHref(l.url, blocked)).map((l) => (
                 <li key={l.url}>
                   <a href={l.url} target="_blank" rel="noopener noreferrer nofollow ugc">
                     <Icon name="link" /> {l.label}

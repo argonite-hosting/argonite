@@ -9,6 +9,7 @@ export function Footer() {
   const links: [string, string][] = [
     ['/how-it-works', t('How verification works')],
     ['/api-docs', 'API'],
+    ['/help/formatting', t('Formatting guide')],
     ['/servers', t('Servers')],
     ['/legal/rules', t('Content rules')],
     ['/legal/terms', t('Terms')],

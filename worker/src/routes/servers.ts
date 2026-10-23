@@ -8,6 +8,7 @@ import { assertSameSite, audit, isStaff, rateLimit } from '../lib/guard';
 import { HttpError, badRequest, clientIp, conflict, forbidden, json, notFound, readJson } from '../lib/http';
 import { check, int, oneOf, optionalStr, pageParams, str, strArray } from '../lib/input';
 import type { Ctx, Router } from '../lib/router';
+import { assertSafeLinks } from '../lib/linkcheck';
 import { pingJava, validHost } from '../lib/serverping';
 import { requireActiveUser, requireModerator } from '../lib/session';
 import type { Env } from '../env';
@@ -171,11 +172,15 @@ async function parseInput(env: Env, body: Record<string, unknown>, partial: bool
     out.summary = cleanText(summary);
   }
   const description = str(body, 'description', { max: 10_000 });
-  if (description !== undefined) out.description = cleanMultiline(description);
+  if (description !== undefined) {
+    await assertSafeLinks(env, 'description', description);
+    out.description = cleanMultiline(description);
+  }
   const host = str(body, 'host', { required: !partial, max: 253 });
   if (host !== undefined) {
     check(validHost(host), 'host');
     out.host = host.trim().toLowerCase().replace(/\.$/, '');
+    await assertSafeLinks(env, 'host', `https://${out.host}`);
   }
   out.edition = oneOf(body, 'edition', ['java', 'bedrock'] as const, !partial);
   const port = int(body, 'port', { min: 1, max: 65535 });
@@ -206,7 +211,10 @@ async function parseInput(env: Env, body: Record<string, unknown>, partial: bool
   ] as const) {
     const v = optionalStr(body, key, 400);
     if (v === undefined) continue;
-    if (v) check(validateHttpsUrl(v), key);
+    if (v) {
+      check(validateHttpsUrl(v), key);
+      await assertSafeLinks(env, key, v);
+    }
     out[field] = v;
   }
   return out;

@@ -12,6 +12,7 @@ import { HttpError, badRequest, conflict, forbidden, json, notFound, readJson } 
 import { check, int, oneOf, str, strArray } from '../lib/input';
 import { goLive } from '../lib/publish';
 import type { Ctx, Router } from '../lib/router';
+import { assertSafeLinks } from '../lib/linkcheck';
 import { githubUploads } from '../lib/runtime';
 import type { Env } from '../env';
 import { ensureGameVersions } from './cron';
@@ -44,7 +45,10 @@ export async function parseMeta(env: Env, body: Record<string, unknown>, project
     meta.name = clean;
   }
   const changelog = str(body, 'changelog', { max: SITE.limits.changelogMaxChars });
-  if (changelog !== undefined) meta.changelog = cleanMultiline(changelog);
+  if (changelog !== undefined) {
+    await assertSafeLinks(env, 'changelog', changelog);
+    meta.changelog = cleanMultiline(changelog);
+  }
   meta.channel = oneOf(body, 'channel', CHANNELS, required);
   if (typeof body.featured === 'boolean') meta.featured = body.featured;
 

@@ -21,6 +21,7 @@ export interface ProjectRow {
   repo_status: Project['repo']['status'];
   icon_path: string | null;
   icon_commit: string | null;
+  icon_sha256: string | null;
   license: string;
   license_url: string | null;
   source_url: string | null;
@@ -39,6 +40,7 @@ export interface ProjectRow {
   archived: number;
   banner_path: string | null;
   banner_commit: string | null;
+  banner_sha256: string | null;
   installation_id: number | null;
   auto_publish: string | null;
   auto_publish_by: string | null;
@@ -71,8 +73,14 @@ function orgRef(row: Pick<ProjectRow, 'org_id' | 'org_slug' | 'org_name' | 'org_
 
 const csv = (s: string | null) => (s ? s.split(',').filter(Boolean) : []);
 
-export function iconUrl(row: Pick<ProjectRow, 'repo_full_name' | 'icon_commit' | 'icon_path'>): string | null {
-  return row.icon_commit && row.icon_path ? rawUrl(row.repo_full_name, row.icon_commit, row.icon_path) : null;
+// Images from the author's repository, pinned to a commit and carrying the SHA-256 recorded when they were
+// stored. The site checks that hash before showing the image; one without a hash isn't served yet.
+export function hashedRawUrl(repo: string, commit: string | null, path: string | null, sha256: string | null): string | null {
+  return commit && path && sha256 ? `${rawUrl(repo, commit, path)}#sha256=${sha256}` : null;
+}
+
+export function iconUrl(row: Pick<ProjectRow, 'repo_full_name' | 'icon_commit' | 'icon_path' | 'icon_sha256'>): string | null {
+  return hashedRawUrl(row.repo_full_name, row.icon_commit, row.icon_path, row.icon_sha256);
 }
 
 export function toSummary(row: ProjectRow): ProjectSummary {
@@ -112,7 +120,7 @@ export async function toProject(env: Env, row: ProjectRow): Promise<Project> {
       `SELECT m.role, m.accepted, m.permissions, u.id, u.username, u.avatar_url FROM members m JOIN users u ON u.id = m.user_id
        WHERE m.project_id = ? AND u.deleted_at IS NULL ORDER BY m.role = 'owner' DESC, m.created_at`,
     ).bind(row.id),
-    env.DB.prepare('SELECT id, path, commit_sha, title FROM gallery WHERE project_id = ? ORDER BY position, created_at').bind(row.id),
+    env.DB.prepare('SELECT id, path, commit_sha, sha256, title FROM gallery WHERE project_id = ? AND sha256 IS NOT NULL ORDER BY position, created_at').bind(row.id),
   ]);
   return {
     ...toSummary(row),
@@ -141,11 +149,11 @@ export async function toProject(env: Env, row: ProjectRow): Promise<Project> {
       permissions: m.permissions,
       user: { id: m.id, username: m.username, avatarUrl: m.avatar_url },
     })),
-    gallery: (gallery.results as { id: string; path: string; commit_sha: string; title: string | null }[]).map(
-      (g): GalleryImage => ({ id: g.id, title: g.title, url: rawUrl(row.repo_full_name, g.commit_sha, g.path) }),
+    gallery: (gallery.results as { id: string; path: string; commit_sha: string; sha256: string; title: string | null }[]).map(
+      (g): GalleryImage => ({ id: g.id, title: g.title, url: hashedRawUrl(row.repo_full_name, g.commit_sha, g.path, g.sha256)! }),
     ),
     publishedAt: row.published_at,
-    bannerUrl: row.banner_commit && row.banner_path ? rawUrl(row.repo_full_name, row.banner_commit, row.banner_path) : null,
+    bannerUrl: hashedRawUrl(row.repo_full_name, row.banner_commit, row.banner_path, row.banner_sha256),
     commentsMode: row.comments_mode,
     views: row.views,
   };

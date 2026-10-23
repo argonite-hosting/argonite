@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'preact/hooks';
 import { Spinner } from './ui';
+import { loadBlockedLinks } from '../lib/blockedLinks';
 import { t } from '../lib/i18n';
 
 type Renderer = (src: string) => string;
@@ -7,7 +8,7 @@ let renderer: Promise<Renderer> | null = null;
 
 // marked + DOMPurify only load when a page actually shows Markdown.
 function loadRenderer(): Promise<Renderer> {
-  renderer ??= import('../lib/markdown').then((m) => m.renderMarkdown);
+  renderer ??= Promise.all([import('../lib/markdown'), loadBlockedLinks()]).then(([m, blocked]) => (src: string) => m.renderMarkdown(src, blocked));
   return renderer;
 }
 
@@ -59,7 +60,10 @@ export function MarkdownEditor({
           </button>
         </div>
         <span class="field-hint">
-          Markdown · {value.length.toLocaleString()}/{maxLength.toLocaleString()}
+          <a href="/help/formatting" target="_blank" rel="noopener" class="text-link">
+            {t('Formatting guide')}
+          </a>{' '}
+          · {value.length.toLocaleString()}/{maxLength.toLocaleString()}
         </span>
       </div>
       {mode === 'write' ? (

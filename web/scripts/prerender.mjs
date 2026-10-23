@@ -60,6 +60,7 @@ const pages = [
   ...types.map(([p, label]) => ({ path: `/${p}`, title: label, description: `Find Minecraft ${label.toLowerCase()} on ${site.name}, scanned for malware and verified on every download.` })),
   { path: '/servers', title: 'Minecraft servers', description: `Find Minecraft servers with live player counts on ${site.name}, and the verified modpacks they run.` },
   { path: '/how-it-works', title: 'How verification works', description: `How ${site.name} scans, signs and verifies every Minecraft file.` },
+  { path: '/help/formatting', title: 'Formatting guide', description: `What you can use in project descriptions, changelogs and server descriptions on ${site.name}.` },
   { path: '/api-docs', title: 'Public API', description: `Read-only JSON API for ${site.name}, with signed file fingerprints for launchers.` },
   { path: '/legal/terms', title: 'Terms of Service', description: `Terms of Service for ${site.name}.` },
   { path: '/legal/privacy', title: 'Privacy Policy', description: `How ${site.name} handles your data.` },

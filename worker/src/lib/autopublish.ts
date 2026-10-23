@@ -14,6 +14,7 @@ import { audit, projectAccess } from './guard';
 import { userFromRow, type UserRow } from './session';
 import { metaStatements, scanJobStatements, uploadCaps, MAX_FILES_PER_VERSION } from '../routes/versions';
 import { ensureGameVersions } from '../routes/cron';
+import { extractLinks, findBadLinks } from './linkcheck';
 
 interface AutoProject {
   id: string;
@@ -78,6 +79,9 @@ async function importRelease(env: Env, project: AutoProject, release: GitHubRele
   const author = userFromRow(authorRow, env);
   const access = await projectAccess(env, project.id, author);
   if (author.banned || !has(access.perms, PERM.UPLOAD_VERSION)) return void (await skip('that member can no longer upload versions'));
+
+  const bad = await findBadLinks(env, extractLinks(release.body));
+  if (bad.length) return void (await skip(`the release notes link to ${bad[0].host}, which is on a malware or phishing list`));
 
   const info = typeInfo(project.type)!;
   const pattern = globToRegex(settings.assetPattern || '*');

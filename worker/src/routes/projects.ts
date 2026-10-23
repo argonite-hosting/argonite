@@ -12,7 +12,8 @@ import {
   validateSummary,
   validateUsername,
 } from '../../../shared/validate';
-import { bytesToB64, newId } from '../lib/crypto';
+import { bytesToB64, newId, sha256Hex } from '../lib/crypto';
+import { assertSafeLinks } from '../lib/linkcheck';
 import { loadProjectRow, loadVersions, toProject } from '../lib/db';
 import { projectRepo, repoInstallationId } from '../lib/app';
 import { requireActor } from '../lib/auth';
@@ -183,7 +184,10 @@ async function update(ctx: Ctx): Promise<Response> {
     set('summary', cleanText(summary));
   }
   const description = str(body, 'description', { max: SITE.limits.descriptionMaxChars });
-  if (description !== undefined) set('description', cleanMultiline(description));
+  if (description !== undefined) {
+    await assertSafeLinks(ctx.env, 'description', description);
+    set('description', cleanMultiline(description));
+  }
   const slug = str(body, 'slug', { max: 64 });
   if (slug !== undefined && slug !== access.slug) {
     if (access.role !== 'owner' && !has(access.perms, PERM_ALL)) throw forbidden('Only the owner can change the URL.');
@@ -205,7 +209,10 @@ async function update(ctx: Ctx): Promise<Response> {
   for (const [key, col] of linkFields) {
     const v = optionalStr(body, key, 400);
     if (v === undefined) continue;
-    if (v) check(validateHttpsUrl(v), key);
+    if (v) {
+      check(validateHttpsUrl(v), key);
+      await assertSafeLinks(ctx.env, key, v);
+    }
     set(col, v);
   }
   const clientSide = oneOf(body, 'clientSide', SIDES);
@@ -251,7 +258,7 @@ async function remove(ctx: Ctx): Promise<Response> {
   return json({ ok: true });
 }
 
-async function commitImage(ctx: Ctx, maxBytes: number, folder: string): Promise<{ path: string; commit: string; access: Awaited<ReturnType<typeof requirePerm>>; userId: string }> {
+async function commitImage(ctx: Ctx, maxBytes: number, folder: string): Promise<{ path: string; commit: string; sha256: string; access: Awaited<ReturnType<typeof requirePerm>>; userId: string }> {
   assertSameSite(ctx);
   const user = await requireActiveUser(ctx);
   await rateLimit(ctx.env.RL_UPLOAD, `img:${user.id}`);
@@ -267,13 +274,13 @@ async function commitImage(ctx: Ctx, maxBytes: number, folder: string): Promise<
     message: `${SITE.name}: add ${label}`,
     content: bytesToB64(bytes),
   });
-  return { path, commit: res.commit.sha, access, userId: user.id };
+  return { path, commit: res.commit.sha, sha256: await sha256Hex(bytes), access, userId: user.id };
 }
 
 async function setIcon(ctx: Ctx): Promise<Response> {
-  const { path, commit, access, userId } = await commitImage(ctx, SITE.limits.iconMaxBytes, 'icon-');
+  const { path, commit, sha256, access, userId } = await commitImage(ctx, SITE.limits.iconMaxBytes, 'icon-');
   await ctx.env.DB.batch([
-    ctx.env.DB.prepare('UPDATE projects SET icon_path = ?, icon_commit = ?, updated_at = ? WHERE id = ?').bind(path, commit, Date.now(), access.id),
+    ctx.env.DB.prepare('UPDATE projects SET icon_path = ?, icon_commit = ?, icon_sha256 = ?, updated_at = ? WHERE id = ?').bind(path, commit, sha256, Date.now(), access.id),
     audit(ctx.env, userId, 'project.icon', 'project', access.id),
   ]);
   return json({ ok: true });
@@ -283,14 +290,14 @@ async function clearIcon(ctx: Ctx): Promise<Response> {
   assertSameSite(ctx);
   const user = await requireActiveUser(ctx);
   const access = await requirePerm(ctx.env, ctx.params.id, user, PERM.EDIT_DETAILS);
-  await ctx.env.DB.prepare('UPDATE projects SET icon_path = NULL, icon_commit = NULL, updated_at = ? WHERE id = ?').bind(Date.now(), access.id).run();
+  await ctx.env.DB.prepare('UPDATE projects SET icon_path = NULL, icon_commit = NULL, icon_sha256 = NULL, updated_at = ? WHERE id = ?').bind(Date.now(), access.id).run();
   return json({ ok: true });
 }
 
 async function setBanner(ctx: Ctx): Promise<Response> {
-  const { path, commit, access, userId } = await commitImage(ctx, SITE.limits.galleryMaxBytes, 'banner-');
+  const { path, commit, sha256, access, userId } = await commitImage(ctx, SITE.limits.galleryMaxBytes, 'banner-');
   await ctx.env.DB.batch([
-    ctx.env.DB.prepare('UPDATE projects SET banner_path = ?, banner_commit = ?, updated_at = ? WHERE id = ?').bind(path, commit, Date.now(), access.id),
+    ctx.env.DB.prepare('UPDATE projects SET banner_path = ?, banner_commit = ?, banner_sha256 = ?, updated_at = ? WHERE id = ?').bind(path, commit, sha256, Date.now(), access.id),
     audit(ctx.env, userId, 'project.banner', 'project', access.id),
   ]);
   return json({ ok: true });
@@ -300,7 +307,7 @@ async function clearBanner(ctx: Ctx): Promise<Response> {
   assertSameSite(ctx);
   const user = await requireActiveUser(ctx);
   const access = await requirePerm(ctx.env, ctx.params.id, user, PERM.EDIT_DETAILS);
-  await ctx.env.DB.prepare('UPDATE projects SET banner_path = NULL, banner_commit = NULL, updated_at = ? WHERE id = ?').bind(Date.now(), access.id).run();
+  await ctx.env.DB.prepare('UPDATE projects SET banner_path = NULL, banner_commit = NULL, banner_sha256 = NULL, updated_at = ? WHERE id = ?').bind(Date.now(), access.id).run();
   return json({ ok: true });
 }
 
@@ -311,12 +318,12 @@ async function addGallery(ctx: Ctx): Promise<Response> {
   if ((count?.n ?? 0) >= SITE.limits.galleryMaxImages) throw badRequest(`Galleries hold up to ${SITE.limits.galleryMaxImages} images.`);
   const titleRaw = ctx.url.searchParams.get('title');
   const title = titleRaw ? cleanText(titleRaw).slice(0, 80) || null : null;
-  const { path, commit, access, userId } = await commitImage(ctx, SITE.limits.galleryMaxBytes, 'gallery/');
+  const { path, commit, sha256, access, userId } = await commitImage(ctx, SITE.limits.galleryMaxBytes, 'gallery/');
   const id = newId();
   await ctx.env.DB.batch([
     ctx.env.DB.prepare(
-      'INSERT INTO gallery (id, project_id, path, commit_sha, title, position, created_at) VALUES (?, ?, ?, ?, ?, (SELECT COALESCE(MAX(position), 0) + 1 FROM gallery WHERE project_id = ?), ?)',
-    ).bind(id, access.id, path, commit, title, access.id, Date.now()),
+      'INSERT INTO gallery (id, project_id, path, commit_sha, sha256, title, position, created_at) VALUES (?, ?, ?, ?, ?, ?, (SELECT COALESCE(MAX(position), 0) + 1 FROM gallery WHERE project_id = ?), ?)',
+    ).bind(id, access.id, path, commit, sha256, title, access.id, Date.now()),
     audit(ctx.env, userId, 'project.gallery.add', 'project', access.id, { image: id }),
   ]);
   return json({ id }, 201);

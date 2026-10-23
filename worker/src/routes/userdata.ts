@@ -9,6 +9,7 @@ import { newId } from '../lib/crypto';
 import { queueWrite, readFile, siteData } from '../lib/datastore';
 import { PROJECT_SELECT, toSummary, type ProjectRow } from '../lib/db';
 import { assertSameSite, rateLimit } from '../lib/guard';
+import { assertSafeLinks } from '../lib/linkcheck';
 import { HttpError, badRequest, clientIp, forbidden, json, notFound, readJson } from '../lib/http';
 import { oneOf, str } from '../lib/input';
 import type { Ctx, Router } from '../lib/router';
@@ -285,6 +286,7 @@ async function updateProfile(ctx: Ctx): Promise<Response> {
     if (err || !url) throw badRequest(err ?? 'Each link needs a URL.', { [`links.${i}`]: err ?? 'URL required.' });
     return { label, url };
   });
+  await assertSafeLinks(ctx.env, 'links', ...links.map((l) => l.url));
   const file: ProfileFile = { v: 1, user: user.id, links };
   await queueWrite(ctx.env, siteData(), profilePath(user.id), 'profile', user.id, links.length ? JSON.stringify(file) : null, { purge: true });
   if (!links.length) await ctx.env.DB.prepare('UPDATE users SET profile_commit = NULL, profile_path = NULL, profile_sha256 = NULL WHERE id = ?').bind(user.id).run();

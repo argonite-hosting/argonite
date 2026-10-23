@@ -4,7 +4,7 @@ import { PERM, has } from '../../../shared/permissions';
 import type { Comment, CommentPageFile, CommentPageRef } from '../../../shared/types';
 import { cleanMultiline, isId } from '../../../shared/validate';
 import { projectRepo } from '../lib/app';
-import { newId, randomToken } from '../lib/crypto';
+import { newId, randomToken, sha256Hex } from '../lib/crypto';
 import { dataUrl, pending, projectData, queueWrite, readFile } from '../lib/datastore';
 import { assertSameSite, audit, isStaff, projectAccess, rateLimit } from '../lib/guard';
 import { HttpError, badRequest, clientIp, forbidden, json, notFound, readJson } from '../lib/http';
@@ -12,11 +12,19 @@ import { str } from '../lib/input';
 import type { Ctx, Router } from '../lib/router';
 import { requireActiveUser, type SessionUser } from '../lib/session';
 import type { Env } from '../env';
+import { assertSafeLinks, extractLinks } from '../lib/linkcheck';
 
 const PAGE_SIZE = 100;
 const MAX_BODY = 2000;
 const EDIT_WINDOW_MS = 24 * 3600 * 1000;
 const MIN_ACCOUNT_AGE_MS = 7 * 86_400_000;
+// Spam limits. Accounts younger than NEW_ACCOUNT_MS (on GitHub) get the stricter link limit.
+const NEW_ACCOUNT_MS = 30 * 86_400_000;
+const LINKS_NEW = 1;
+const LINKS_MAX = 5;
+const BURST = { count: 5, windowMs: 10 * 60_000 };
+const PER_PROJECT_HOURLY = 10;
+const WAVE_AUTHORS = 3;
 
 interface PageRow {
   page: number;
@@ -81,6 +89,39 @@ async function guardWriter(ctx: Ctx): Promise<SessionUser> {
   return user;
 }
 
+// Lower-case letters and digits only, so trivial edits don't dodge the duplicate checks.
+async function bodyHash(text: string): Promise<string> {
+  return sha256Hex(text.normalize('NFKC').toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim());
+}
+
+function checkLinkCount(user: SessionUser, text: string): void {
+  const max = Date.now() - user.githubCreatedAt < NEW_ACCOUNT_MS ? LINKS_NEW : LINKS_MAX;
+  if (extractLinks(text).length > max) {
+    throw badRequest(max === 1 ? 'New accounts can include one link per comment.' : `Comments can include up to ${max} links.`, { body: 'Too many links.' });
+  }
+}
+
+// Bursts, floods on one project, repeats of your own comment, and the same text from several accounts.
+async function checkSpam(ctx: Ctx, user: SessionUser, projectId: string, text: string, hash: string): Promise<void> {
+  const now = Date.now();
+  const [burst, project, repeat, wave] = await ctx.env.DB.batch([
+    ctx.env.DB.prepare('SELECT COUNT(*) AS n FROM comments WHERE author_id = ? AND created_at > ?').bind(user.id, now - BURST.windowMs),
+    ctx.env.DB.prepare('SELECT COUNT(*) AS n FROM comments WHERE author_id = ? AND project_id = ? AND created_at > ?').bind(user.id, projectId, now - 3_600_000),
+    ctx.env.DB.prepare('SELECT COUNT(*) AS n FROM comments WHERE author_id = ? AND body_hash = ? AND created_at > ?').bind(user.id, hash, now - 86_400_000),
+    ctx.env.DB.prepare('SELECT COUNT(DISTINCT author_id) AS n FROM comments WHERE body_hash = ? AND author_id != ? AND created_at > ?').bind(hash, user.id, now - 3_600_000),
+  ]);
+  const n = (r: D1Result) => (r.results[0] as { n: number } | undefined)?.n ?? 0;
+  if (n(burst) >= BURST.count) throw new HttpError(429, 'rate_limited', 'You’re commenting very quickly. Wait a few minutes and try again.');
+  if (n(project) >= PER_PROJECT_HOURLY) throw new HttpError(429, 'rate_limited', 'You’ve commented a lot on this project in the last hour. Try again later.');
+  if (n(repeat) > 0) throw badRequest('You already posted this comment.', { body: 'Duplicate.' });
+  // Short replies like "thanks!" are naturally repeated, so the wave check skips them.
+  const substantial = text.length >= 30 || extractLinks(text).length > 0;
+  if (substantial && n(wave) + 1 >= WAVE_AUTHORS) {
+    await audit(ctx.env, user.id, 'comment.spam_blocked', 'project', projectId, { hash }).run();
+    throw badRequest('This comment matches text other accounts just posted, so it was held back as possible spam.', { body: 'Looks like spam.' });
+  }
+}
+
 function cleanBody(raw: unknown): string {
   if (typeof raw !== 'string') throw badRequest('Write a comment.', { body: 'Required.' });
   const body = cleanMultiline(raw).replace(/\n{3,}/g, '\n\n');
@@ -137,10 +178,14 @@ async function create(ctx: Ctx): Promise<Response> {
   const user = await guardWriter(ctx);
   const body = await readJson(ctx.request, 16_000);
   const text = cleanBody(body.body);
+  checkLinkCount(user, text);
+  await assertSafeLinks(ctx.env, 'body', text);
   const { access, mode, project } = await projectForComments(ctx, user);
   if (mode === 'off') throw forbidden('Comments are turned off for this project.');
   if (mode === 'members' && !access.role) throw forbidden('Only project members can comment here.');
   if (access.archived) throw forbidden('This project is archived.');
+  const hash = await bodyHash(text);
+  await checkSpam(ctx, user, access.id, text, hash);
 
   const recent = await ctx.env.DB.prepare('SELECT COUNT(*) AS n FROM comments WHERE author_id = ? AND created_at > ?').bind(user.id, Date.now() - 86_400_000).first<{ n: number }>();
   if ((recent?.n ?? 0) >= 60) throw new HttpError(429, 'rate_limited', 'You have commented a lot today. Take a break and come back tomorrow.');
@@ -175,9 +220,9 @@ async function create(ctx: Ctx): Promise<Response> {
     },
     (lock) => [
       ctx.env.DB.prepare(
-        `INSERT INTO comments (id, project_id, page, author_id, parent_id, created_at)
-         SELECT ?1, ?2, ?3, ?4, ?5, ?6 WHERE EXISTS (SELECT 1 FROM comment_pages WHERE project_id = ?2 AND page = ?3 AND lock = ?7)`,
-      ).bind(id, access.id, page, user.id, parentId, now, lock),
+        `INSERT INTO comments (id, project_id, page, author_id, parent_id, created_at, body_hash)
+         SELECT ?1, ?2, ?3, ?4, ?5, ?6, ?8 WHERE EXISTS (SELECT 1 FROM comment_pages WHERE project_id = ?2 AND page = ?3 AND lock = ?7)`,
+      ).bind(id, access.id, page, user.id, parentId, now, lock, hash),
     ],
     { countDelta: 1 },
   );
@@ -199,6 +244,8 @@ async function edit(ctx: Ctx): Promise<Response> {
   const user = await guardWriter(ctx);
   const body = await readJson(ctx.request, 16_000);
   const text = cleanBody(body.body);
+  checkLinkCount(user, text);
+  await assertSafeLinks(ctx.env, 'body', text);
   const { c, project } = await commentFor(ctx, user);
   if (c.author_id !== user.id) throw forbidden('You can only edit your own comments.');
   if (Date.now() - c.created_at > EDIT_WINDOW_MS) throw forbidden('Comments can be edited for 24 hours after posting.');

@@ -118,3 +118,117 @@
   cursor: pointer;
   font-weight: 600;
 }
+.prose th[align='center'],
+.prose td[align='center'] {
+  text-align: center;
+}
+.prose th[align='right'],
+.prose td[align='right'] {
+  text-align: right;
+}
+.prose [align='center'] > img,
+.prose img[align='center'] {
+  margin-inline: auto;
+}
+.prose img[align='center'] {
+  display: block;
+}
+.prose img[align='left'] {
+  float: left;
+  margin: 0 1em 0.5em 0;
+}
+.prose img[align='right'] {
+  float: right;
+  margin: 0 0 0.5em 1em;
+}
+.prose details > :last-child {
+  margin-bottom: 0;
+}
+.prose summary + * {
+  margin-top: 0.6em;
+}
+.prose li > input[type='checkbox'] {
+  margin: 0 0.4em 0 -1.3em;
+  vertical-align: middle;
+}
+.prose li:has(> input[type='checkbox']) {
+  list-style: none;
+}
+.prose figure {
+  margin: 0 0 1em;
+}
+.prose figcaption {
+  margin-top: 0.4em;
+  color: var(--text-3);
+  font-size: var(--fs-sm);
+}
+.prose kbd {
+  padding: 0.1em 0.45em;
+  border: 1px solid var(--border-strong);
+  border-bottom-width: 2px;
+  border-radius: 5px;
+  background: var(--surface);
+  font-family: var(--font-mono, monospace);
+  font-size: 0.85em;
+}
+.prose mark {
+  padding: 0 0.15em;
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--warning, #f5b400) 35%, transparent);
+  color: inherit;
+}
+.prose .prose-embed {
+  position: relative;
+  max-width: 720px;
+  aspect-ratio: 16 / 9;
+  margin: 0 0 1em;
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: var(--surface-2);
+}
+.prose .prose-embed iframe {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+.prose video {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 0 0 1em;
+  border-radius: var(--radius);
+  background: #000;
+}
+.prose audio {
+  display: block;
+  width: 100%;
+  max-width: 480px;
+  margin: 0 0 1em;
+}
+.prose progress,
+.prose meter {
+  width: 160px;
+  max-width: 100%;
+  vertical-align: middle;
+  accent-color: var(--accent);
+}
+.prose h5,
+.prose h6 {
+  margin: 1.4em 0 0.5em;
+  font-size: var(--fs-sm);
+}
+.prose h6 {
+  color: var(--text-2);
+}
+.prose::after {
+  content: '';
+  display: block;
+  clear: both;
+}
+.prose .blocked-link {
+  color: var(--text-3);
+  text-decoration: line-through;
+  cursor: not-allowed;
+}

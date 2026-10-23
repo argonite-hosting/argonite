@@ -9,7 +9,7 @@ import { Icon } from '../components/Icon';
 import { MarkdownEditor } from '../components/Markdown';
 import { Analytics, ModThread, ProjectPermissionPicker, Publishing } from '../components/ProjectPanels';
 import { RequireAuth } from '../components/RequireAuth';
-import { Alert, Avatar, ChannelBadge, Empty, Field, Modal, PageLoading, ProjectIcon, Spinner, StatusBadge, Tabs, useAsync } from '../components/ui';
+import { Alert, Avatar, ChannelBadge, Empty, Field, Modal, PageLoading, ProjectIcon, Spinner, StatusBadge, Tabs, useAsync, VerifiedImg } from '../components/ui';
 import { SITE } from '../config';
 import { ApiError, api, upload } from '../lib/api';
 import { date } from '../lib/format';
@@ -326,7 +326,7 @@ function Media({ m, reload }: { m: Manage; reload: () => void }) {
         <h3>{t('Banner')}</h3>
         {p.bannerUrl && (
           <div class="project-banner project-banner-preview">
-            <img src={p.bannerUrl} alt="" referrerpolicy="no-referrer" />
+            <VerifiedImg src={p.bannerUrl} />
           </div>
         )}
         <p class="muted">{t('A wide image shown across the top of your project page. 1600×400 works well, up to {size} KB.', { size: Math.round(SITE.limits.galleryMaxBytes / 1024) })}</p>
@@ -352,7 +352,7 @@ function Media({ m, reload }: { m: Manage; reload: () => void }) {
           <div class="gallery-grid gallery-grid-edit">
             {p.gallery.map((g) => (
               <figure key={g.id} class="gallery-item">
-                <img src={g.url} alt={g.title ?? ''} loading="lazy" referrerpolicy="no-referrer" />
+                <VerifiedImg src={g.url} alt={g.title ?? ''} loading="lazy" />
                 <figcaption>
                   <span>{g.title ?? t('Untitled')}</span>
                   <button type="button" class="btn btn-ghost btn-sm btn-icon" aria-label={t('Remove image')} onClick={() => remove(`/api/projects/${p.id}/gallery/${g.id}`, t('Image'))}>

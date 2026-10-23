@@ -5,6 +5,7 @@ export interface Env {
   GITHUB_WEBHOOK_SECRET: string;
   GITHUB_APP_PRIVATE_KEY?: string;
   CURSEFORGE_API_KEY?: string;
+  URLHAUS_KEY?: string;
   SCANNER_HMAC_SECRET: string;
   SCANNER_DISPATCH_TOKEN: string;
   TOKEN_ENCRYPTION_KEY: string;

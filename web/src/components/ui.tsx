@@ -5,6 +5,7 @@ import { initials } from '../lib/format';
 import { dismissToast, toast, toasts, useStore } from '../lib/store';
 import { Icon, type IconName } from './Icon';
 import { t } from '../lib/i18n';
+import { useVerifiedImage } from '../lib/verifiedImage';
 
 export function Avatar({ src, name, size = 'md' }: { src: string | null | undefined; name: string; size?: 'sm' | 'md' | 'lg' }) {
   const [broken, setBroken] = useState(false);
@@ -19,17 +20,26 @@ export function Avatar({ src, name, size = 'md' }: { src: string | null | undefi
   return <img class={cls} src={src} alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" onError={() => setBroken(true)} />;
 }
 
+// An image from an author's repository, shown only once it matches its recorded SHA-256.
+export function VerifiedImg({ src, alt = '', class: cls, loading }: { src: string | null; alt?: string; class?: string; loading?: 'lazy' | 'eager' }) {
+  const verified = useVerifiedImage(src);
+  if (!verified) return verified === undefined ? <span class={`img-pending${cls ? ` ${cls}` : ''}`} aria-hidden="true" /> : null;
+  return <img class={cls} src={verified} alt={alt} loading={loading} decoding="async" />;
+}
+
 export function ProjectIcon({ src, name, size = 64 }: { src: string | null; name: string; size?: number }) {
   const [broken, setBroken] = useState(false);
+  const verified = useVerifiedImage(src);
   const style = { width: `${size}px`, height: `${size}px`, borderRadius: `${Math.round(size * 0.22)}px` };
-  if (!src || broken) {
+  if (verified === undefined) return <span class="project-icon project-icon-fallback" style={style} aria-hidden="true" />;
+  if (!verified || broken) {
     return (
       <span class="project-icon project-icon-fallback" style={{ ...style, fontSize: `${Math.round(size * 0.42)}px` }} aria-hidden="true">
         {initials(name).slice(0, 1)}
       </span>
     );
   }
-  return <img class="project-icon" style={style} src={src} alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" onError={() => setBroken(true)} />;
+  return <img class="project-icon" style={style} src={verified} alt="" decoding="async" onError={() => setBroken(true)} />;
 }
 
 export function Spinner({ label }: { label?: string }) {

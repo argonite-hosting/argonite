@@ -38,6 +38,7 @@ const ROUTES: Route[] = [
   route('/moderation', () => import('./pages/Moderation')),
   route('/api-docs', () => import('./pages/ApiDocs')),
   route('/how-it-works', () => import('./pages/HowItWorks')),
+  route('/help/formatting', () => import('./pages/Formatting')),
   route('/legal/:page', () => import('./pages/Legal')),
   route('/auth/error', () => import('./pages/AuthError')),
 ];

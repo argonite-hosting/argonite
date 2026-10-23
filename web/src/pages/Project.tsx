@@ -11,7 +11,7 @@ import { Icon, type IconName } from '../components/Icon';
 import { Markdown } from '../components/Markdown';
 import { PackContents } from '../components/PackContents';
 import { ReportDialog } from '../components/ReportDialog';
-import { Alert, Avatar, ChannelBadge, CopyField, Empty, Menu, Modal, PageLoading, ProjectIcon, Spinner, Tabs, useAsync } from '../components/ui';
+import { Alert, Avatar, ChannelBadge, CopyField, Empty, Menu, Modal, PageLoading, ProjectIcon, Spinner, Tabs, useAsync, VerifiedImg } from '../components/ui';
 import { SITE, API_URL } from '../config';
 import { ApiError, api, loginUrl, pub } from '../lib/api';
 import { signatureValid } from '../lib/download';
@@ -20,6 +20,7 @@ import { useHead } from '../lib/head';
 import { t, tn } from '../lib/i18n';
 import { Link, navigate, useLocation } from '../lib/router';
 import { errorToast, isStaff, toast, useSession } from '../lib/store';
+import { safeHref, useBlockedLinks } from '../lib/blockedLinks';
 
 type Tab = 'overview' | 'versions' | 'changelog' | 'gallery' | 'contents' | 'comments' | 'version';
 const TABS: Tab[] = ['versions', 'changelog', 'gallery', 'contents', 'comments'];
@@ -298,13 +299,15 @@ function Sidebar({ project, versions }: { project: Project; versions: Version[] 
   const [allVersions, setAllVersions] = useState(false);
   const shownGvs = allVersions ? gvs : gvs.slice(0, 8);
   const featured = versions.filter((v) => v.featured).slice(0, 5);
+  const blocked = useBlockedLinks();
   const links: { href: string | null; label: string; icon: IconName }[] = [
-    { href: project.links.source, label: t('Source code'), icon: 'code' },
-    { href: project.links.issues, label: t('Issue tracker'), icon: 'alert' },
-    { href: project.links.wiki, label: t('Wiki'), icon: 'book' },
-    { href: project.links.discord, label: 'Discord', icon: 'message' },
-    { href: project.links.donation, label: t('Support the creator'), icon: 'gift' },
+    { href: safeHref(project.links.source, blocked), label: t('Source code'), icon: 'code' },
+    { href: safeHref(project.links.issues, blocked), label: t('Issue tracker'), icon: 'alert' },
+    { href: safeHref(project.links.wiki, blocked), label: t('Wiki'), icon: 'book' },
+    { href: safeHref(project.links.discord, blocked), label: 'Discord', icon: 'message' },
+    { href: safeHref(project.links.donation, blocked), label: t('Support the creator'), icon: 'gift' },
   ];
+  const licenseHref = safeHref(project.links.license, blocked);
   const sides: Record<string, string> = { required: t('Required'), optional: t('Optional'), unsupported: t('Not needed'), unknown: t('Unknown') };
   return (
     <aside class="project-aside">
@@ -377,8 +380,8 @@ function Sidebar({ project, versions }: { project: Project; versions: Version[] 
         <dl class="kv">
           <dt>{t('License')}</dt>
           <dd>
-            {project.links.license ? (
-              <a href={project.links.license} target="_blank" rel="noopener noreferrer nofollow">
+            {licenseHref ? (
+              <a href={licenseHref} target="_blank" rel="noopener noreferrer nofollow">
                 {licenseLabel(project.license)}
               </a>
             ) : (
@@ -581,14 +584,14 @@ function GalleryTab({ project }: { project: Project }) {
       <div class="gallery-grid">
         {project.gallery.map((g, i) => (
           <button key={g.id} type="button" class="gallery-item" onClick={() => setOpen(i)} aria-label={g.title ?? t('Image {n}', { n: i + 1 })}>
-            <img src={g.url} alt={g.title ?? ''} loading="lazy" decoding="async" referrerpolicy="no-referrer" />
+            <VerifiedImg src={g.url} alt={g.title ?? ''} loading="lazy" />
             {g.title && <span>{g.title}</span>}
           </button>
         ))}
       </div>
       {img && (
         <Modal title={img.title ?? t('{name} image {n}', { name: project.name, n: open! + 1 })} onClose={() => setOpen(null)} wide>
-          <img class="lightbox-img" src={img.url} alt={img.title ?? ''} referrerpolicy="no-referrer" />
+          <VerifiedImg class="lightbox-img" src={img.url} alt={img.title ?? ''} />
           {project.gallery.length > 1 && (
             <div class="lightbox-nav">
               <button type="button" class="btn" onClick={() => setOpen((open! - 1 + project.gallery.length) % project.gallery.length)}>
@@ -885,7 +888,7 @@ export default function ProjectPage({ params }: { params: Record<string, string>
     <div class="container page">
       {project.bannerUrl && (
         <div class="project-banner">
-          <img src={project.bannerUrl} alt="" referrerpolicy="no-referrer" decoding="async" />
+          <VerifiedImg src={project.bannerUrl} />
         </div>
       )}
       {data.draft && (

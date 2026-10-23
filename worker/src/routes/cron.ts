@@ -2,6 +2,8 @@ import type { Env } from '../env';
 import { appConfigured, projectRepo } from '../lib/app';
 import { checkWatchedReleases } from '../lib/autopublish';
 import { flushOutbox } from '../lib/datastore';
+import { hashStoredImages } from '../lib/imagehash';
+import { refreshLinkChecks } from '../lib/linkcheck';
 import { moveUnlistedOffGitHub } from './userdata';
 import { audit } from '../lib/guard';
 import { dispatchScan, gh, repoPath } from '../lib/github';
@@ -128,6 +130,8 @@ export async function runCron(cron: string, env: Env, scheduledTime = Date.now()
   if (new Date(scheduledTime).getUTCMinutes() % 10 >= 2) return;
   await sweepScans(env);
   await sweepAbandonedUploads(env);
+  await hashStoredImages(env).catch((e) => console.error(JSON.stringify({ cron: 'images', error: String(e) })));
+  await refreshLinkChecks(env).catch((e) => console.error(JSON.stringify({ cron: 'links', error: String(e) })));
   if (app) await retryPublishing(env);
   await pingDue(env).catch((e) => console.error(JSON.stringify({ cron: 'servers', error: String(e) })));
 }
