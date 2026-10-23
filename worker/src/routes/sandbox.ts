@@ -232,11 +232,14 @@ async function result(ctx: Ctx): Promise<Response> {
 export async function sweepSandbox(env: Env): Promise<void> {
   const now = Date.now();
   const settle = new Set<string>();
+  // Open runs are given up only when tests are switched off, or their version stopped waiting for them
+  // (a moderator rejected it, the author deleted it). Running tests are left alone.
+  const switchedOff = sandboxEnabled(env) ? 0 : 1;
   const abandoned = await env.DB.prepare(
     `SELECT id, version_id FROM sandbox_runs WHERE status IN ('queued', 'claimed')
-       AND (?1 = 0 OR version_id IN (SELECT id FROM versions WHERE status != 'scanning'))`,
+       AND (?1 = 1 OR version_id IN (SELECT id FROM versions WHERE status != 'scanning'))`,
   )
-    .bind(sandboxEnabled(env) ? 0 : 1)
+    .bind(switchedOff)
     .all<{ id: string; version_id: string }>();
   for (const r of abandoned.results) {
     await env.DB.prepare("UPDATE sandbox_runs SET status = 'failed', error = ?, claim_hash = NULL, finished_at = ? WHERE id = ?")

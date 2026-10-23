@@ -295,7 +295,6 @@
   "Every file in a version’s files list carries sha1, sha256, sha512 and an Ed25519 signature (base64). The signature covers this exact UTF-8 string, lines joined with a newline:": "Chaque fichier de la liste des fichiers d’une version porte sha1, sha256, sha512 et une signature Ed25519 (base64). La signature couvre exactement cette chaîne UTF-8, lignes séparées par un saut de ligne :",
   "Every file was downloaded, matched against the pack’s hashes and scanned before this version went live.": "Chaque fichier a été téléchargé, comparé aux hachages du pack et analysé avant la mise en ligne de cette version.",
   "Every mod a modpack downloads is fetched from its listed host, matched against the pack’s hashes and scanned too. Files already published here are recognised by their fingerprint.": "Chaque mod téléchargé par un modpack est récupéré depuis l’hôte indiqué, comparé aux hachages du pack et analysé lui aussi. Les fichiers déjà publiés ici sont reconnus grâce à leur empreinte.",
-  "Every nested jar is unpacked and checked with ClamAV, YARA rules and Minecraft-specific bytecode analysis.": "Chaque jar imbriqué est décompressé et vérifié avec ClamAV, des règles YARA et une analyse de bytecode propre à Minecraft.",
   "Every version in the": "Chaque version de notre",
   "Everyone": "Tout le monde",
   "Everything is inside a “{folder}” folder. Zip the folder’s contents instead, or Minecraft won’t find it.": "Tout se trouve dans un dossier « {folder} ». Compressez plutôt le contenu du dossier, sinon Minecraft ne le trouvera pas.",
@@ -431,7 +430,6 @@
   "It may be private or deleted.": "Il est peut-être privé ou supprimé.",
   "It may have been removed or is not live.": "Il a peut-être été retiré ou n’est pas en ligne.",
   "It may have been removed, or the link is wrong.": "Il a peut-être été retiré, ou le lien est erroné.",
-  "It passed automated checks but needs a quick human look: {reason}. Its GitHub release stays a draft until then.": "Elle a réussi les vérifications automatiques mais nécessite un rapide coup d’œil humain : {reason}. Sa release GitHub reste en brouillon d’ici là.",
   "It passed the scan, its GitHub release is now published, and players can download it.": "Elle a réussi l’analyse, sa release GitHub est maintenant publiée et les joueurs peuvent la télécharger.",
   "It stays private as a draft until your first version passes its scan.": "Il reste privé en brouillon jusqu’à ce que votre première version réussisse l’analyse.",
   "It was committed to your repository.": "Il a été commité dans votre dépôt.",
@@ -647,7 +645,6 @@
   "Organisations": "Organisations",
   "Organisations share projects between a team, with permissions per member.": "Les organisations partagent des projets au sein d’une équipe, avec des permissions par membre.",
   "Other file": "Autre fichier",
-  "Our scanner pulls every file through a short-lived private link, unpacks every nested jar and runs ClamAV, YARA rules and bytecode checks tuned for Minecraft malware such as Fractureiser-style loaders, token stealers and self-spreading jar infectors. Resource packs, data packs and shaders are rejected outright if they contain any code.": "Notre analyseur récupère chaque fichier via un lien privé de courte durée, décompresse chaque jar imbriqué et exécute ClamAV, des règles YARA et des contrôles de bytecode adaptés aux malwares Minecraft, comme les chargeurs de type Fractureiser, les voleurs de jetons et les infecteurs de jar qui se propagent seuls. Les packs de ressources, packs de données et shaders sont refusés d’office s’ils contiennent du code.",
   "Overview": "Aperçu",
   "Owned by": "Appartient à",
   "Owner": "Propriétaire",
@@ -791,7 +788,6 @@
   "Role": "Rôle",
   "Role updated": "Rôle mis à jour",
   "Roleplay": "Jeu de rôle",
-  "routine review": "vérification de routine",
   "RSS feed": "Flux RSS",
   "RSS feed of everything you follow": "Flux RSS de tout ce que vous suivez",
   "Runs on": "Fonctionne sur",
@@ -881,7 +877,6 @@
   "Sign-in didn’t complete": "La connexion n’a pas abouti",
   "Sign-in problem": "Problème de connexion",
   "signature": "signature",
-  "Signature engines and Minecraft-specific rules catch known families and common tricks.": "Les moteurs de signatures et les règles propres à Minecraft détectent les familles connues et les astuces courantes.",
   "Signature invalid": "Signature invalide",
   "Signature valid": "Signature valide",
   "Signed out everywhere": "Déconnecté partout",
@@ -1196,5 +1191,9 @@
     "one": "observé {n} minute",
     "other": "observé {n} minutes"
   },
-  "We’re scanning your files. This can take from a few minutes up to about an hour. You can leave this page; the result also appears on your dashboard.": "Nous analysons vos fichiers. Cela peut prendre de quelques minutes à environ une heure. Vous pouvez quitter cette page ; le résultat apparaît aussi dans votre tableau de bord."
+  "We’re scanning your files. This can take from a few minutes up to about an hour. You can leave this page; the result also appears on your dashboard.": "Nous analysons vos fichiers. Cela peut prendre de quelques minutes à environ une heure. Vous pouvez quitter cette page ; le résultat apparaît aussi dans votre tableau de bord.",
+  "Every file, and every jar packed inside it, is scanned for malware before it goes live.": "Chaque fichier, et chaque jar qu’il contient, est analysé contre les logiciels malveillants avant sa mise en ligne.",
+  "Every file is fetched through a short-lived private link and scanned for malware, including every jar packed inside it. Mods, plugins and modpacks are also tried out in an isolated environment before they go live. Resource packs, data packs and shaders are rejected outright if they contain any code.": "Chaque fichier est récupéré via un lien privé de courte durée et analysé contre les logiciels malveillants, y compris chaque jar qu’il contient. Les mods, plugins et modpacks sont aussi essayés dans un environnement isolé avant leur mise en ligne. Les packs de ressources, packs de données et shaders sont refusés d’office s’ils contiennent du code.",
+  "Our checks catch known malware and common tricks.": "Nos vérifications détectent les logiciels malveillants connus et les astuces courantes.",
+  "A moderator will take a quick look before it goes live. Its GitHub release stays a draft until then.": "Un modérateur va y jeter un œil avant la mise en ligne. Sa release GitHub reste un brouillon d’ici là."
 }

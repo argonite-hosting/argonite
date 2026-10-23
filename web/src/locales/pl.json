@@ -296,7 +296,6 @@
   "Every file in a version’s files list carries sha1, sha256, sha512 and an Ed25519 signature (base64). The signature covers this exact UTF-8 string, lines joined with a newline:": "Każdy plik na liście plików wersji zawiera sha1, sha256, sha512 i podpis Ed25519 (base64). Podpis obejmuje dokładnie ten ciąg UTF-8, z wierszami połączonymi znakiem nowej linii:",
   "Every file was downloaded, matched against the pack’s hashes and scanned before this version went live.": "Każdy plik został pobrany, porównany z haszami paczki i przeskanowany przed opublikowaniem tej wersji.",
   "Every mod a modpack downloads is fetched from its listed host, matched against the pack’s hashes and scanned too. Files already published here are recognised by their fingerprint.": "Każdy mod pobierany przez modpack jest ściągany z podanego hosta, porównywany z haszami paczki i również skanowany. Pliki już tu opublikowane są rozpoznawane po odcisku.",
-  "Every nested jar is unpacked and checked with ClamAV, YARA rules and Minecraft-specific bytecode analysis.": "Każdy zagnieżdżony jar jest rozpakowywany i sprawdzany ClamAV, regułami YARA i analizą kodu bajtowego pod kątem Minecrafta.",
   "Every version in the": "Każda wersja w",
   "Everyone": "Wszyscy",
   "Everything is inside a “{folder}” folder. Zip the folder’s contents instead, or Minecraft won’t find it.": "Wszystko jest w folderze „{folder}”. Spakuj zamiast tego zawartość folderu, inaczej Minecraft jej nie znajdzie.",
@@ -433,7 +432,6 @@
   "It may be private or deleted.": "Może być prywatne lub usunięte.",
   "It may have been removed or is not live.": "Mógł zostać usunięty lub nie jest opublikowany.",
   "It may have been removed, or the link is wrong.": "Mógł zostać usunięty albo link jest błędny.",
-  "It passed automated checks but needs a quick human look: {reason}. Its GitHub release stays a draft until then.": "Przeszła automatyczne kontrole, ale wymaga szybkiego sprawdzenia przez człowieka: {reason}. Do tego czasu wydanie na GitHubie pozostaje szkicem.",
   "It passed the scan, its GitHub release is now published, and players can download it.": "Przeszła skanowanie, jej wydanie na GitHubie jest już opublikowane i gracze mogą ją pobrać.",
   "It stays private as a draft until your first version passes its scan.": "Pozostaje prywatny jako szkic, dopóki pierwsza wersja nie przejdzie skanowania.",
   "It was committed to your repository.": "Został zapisany w Twoim repozytorium.",
@@ -649,7 +647,6 @@
   "Organisations": "Organizacje",
   "Organisations share projects between a team, with permissions per member.": "Organizacje udostępniają projekty zespołowi, z uprawnieniami dla każdego członka.",
   "Other file": "Inny plik",
-  "Our scanner pulls every file through a short-lived private link, unpacks every nested jar and runs ClamAV, YARA rules and bytecode checks tuned for Minecraft malware such as Fractureiser-style loaders, token stealers and self-spreading jar infectors. Resource packs, data packs and shaders are rejected outright if they contain any code.": "Nasz skaner pobiera każdy plik przez krótkotrwały prywatny link, rozpakowuje każdy zagnieżdżony jar i uruchamia ClamAV, reguły YARA oraz kontrole kodu bajtowego dostosowane do malware w Minecrafcie, takiego jak loadery w stylu Fractureiser, kradzieje tokenów i samorozprzestrzeniające się infektory jarów. Paczki zasobów, paczki danych i shadery są od razu odrzucane, jeśli zawierają jakikolwiek kod.",
   "Overview": "Przegląd",
   "Owned by": "Właściciel",
   "Owner": "Właściciel",
@@ -793,7 +790,6 @@
   "Role": "Rola",
   "Role updated": "Rola zaktualizowana",
   "Roleplay": "Roleplay",
-  "routine review": "rutynowa weryfikacja",
   "RSS feed": "Kanał RSS",
   "RSS feed of everything you follow": "Kanał RSS ze wszystkim, co obserwujesz",
   "Runs on": "Działa na",
@@ -883,7 +879,6 @@
   "Sign-in didn’t complete": "Logowanie nie zostało ukończone",
   "Sign-in problem": "Problem z logowaniem",
   "signature": "podpis",
-  "Signature engines and Minecraft-specific rules catch known families and common tricks.": "Silniki sygnatur i reguły specyficzne dla Minecrafta wykrywają znane rodziny i typowe sztuczki.",
   "Signature invalid": "Podpis nieprawidłowy",
   "Signature valid": "Podpis prawidłowy",
   "Signed out everywhere": "Wylogowano wszędzie",
@@ -1205,5 +1200,9 @@
     "many": "obserwowano {n} minut",
     "other": "obserwowano {n} minuty"
   },
-  "We’re scanning your files. This can take from a few minutes up to about an hour. You can leave this page; the result also appears on your dashboard.": "Skanujemy Twoje pliki. Może to potrwać od kilku minut do około godziny. Możesz opuścić tę stronę; wynik pojawi się też w Twoim panelu."
+  "We’re scanning your files. This can take from a few minutes up to about an hour. You can leave this page; the result also appears on your dashboard.": "Skanujemy Twoje pliki. Może to potrwać od kilku minut do około godziny. Możesz opuścić tę stronę; wynik pojawi się też w Twoim panelu.",
+  "Every file, and every jar packed inside it, is scanned for malware before it goes live.": "Każdy plik i każdy zawarty w nim jar jest skanowany pod kątem złośliwego oprogramowania przed publikacją.",
+  "Every file is fetched through a short-lived private link and scanned for malware, including every jar packed inside it. Mods, plugins and modpacks are also tried out in an isolated environment before they go live. Resource packs, data packs and shaders are rejected outright if they contain any code.": "Każdy plik jest pobierany przez krótkotrwały prywatny link i skanowany pod kątem złośliwego oprogramowania, łącznie z każdym zawartym w nim jarem. Mody, pluginy i modpacki są też przed publikacją uruchamiane w odizolowanym środowisku. Paczki zasobów, paczki danych i shadery są od razu odrzucane, jeśli zawierają jakikolwiek kod.",
+  "Our checks catch known malware and common tricks.": "Nasze kontrole wykrywają znane złośliwe oprogramowanie i typowe sztuczki.",
+  "A moderator will take a quick look before it goes live. Its GitHub release stays a draft until then.": "Moderator rzuci okiem, zanim wersja zostanie opublikowana. Do tego czasu jej wydanie na GitHubie pozostaje szkicem."
 }

@@ -45,7 +45,7 @@ async function createReport(ctx: Ctx): Promise<Response> {
 async function queue(ctx: Ctx): Promise<Response> {
   await requireModerator(ctx);
   const status = ctx.url.searchParams.get('status') === 'rejected' ? 'rejected' : 'review';
-  const versions = await loadVersions(ctx.env, { statuses: [status], includeScan: true, limit: 100 });
+  const versions = await loadVersions(ctx.env, { statuses: [status], includeScan: true, staff: true, limit: 100 });
   const projectIds = [...new Set(versions.map((v) => v.projectId))];
   const rows = projectIds.length
     ? await ctx.env.DB.prepare(`${PROJECT_SELECT} WHERE p.id IN (SELECT value FROM json_each(?))`).bind(JSON.stringify(projectIds)).all<ProjectRow>()

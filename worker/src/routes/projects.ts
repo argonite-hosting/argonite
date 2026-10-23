@@ -143,6 +143,7 @@ async function manage(ctx: Ctx): Promise<Response> {
       projectId: access.id,
       statuses: ['uploading', 'scanning', 'review', 'live', 'rejected', 'revoked', 'unavailable'],
       includeScan: true,
+      staff: isStaff(user),
     }),
   ]);
   let autoPublish: AutoPublishSettings | null = null;

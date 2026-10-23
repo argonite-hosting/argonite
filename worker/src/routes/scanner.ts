@@ -4,7 +4,7 @@ import type { Finding, NativeFile, PackContents } from '../../../shared/types';
 import { isId } from '../../../shared/validate';
 import { assetDownloadUrl, projectRepo } from '../lib/app';
 import { hmacHex, randomToken, safeEqual, sha256Hex } from '../lib/crypto';
-import { parseJson, recomputeProject } from '../lib/db';
+import { parseJson, publicFinding, recomputeProject } from '../lib/db';
 import { audit } from '../lib/guard';
 import { HttpError, badRequest, json, readTextLimited } from '../lib/http';
 import { goLive } from '../lib/publish';
@@ -339,9 +339,12 @@ export async function decideVersion(env: Env, versionId: string): Promise<string
   const bad = all.find((f) => f.verdict === 'malicious');
   if (bad) {
     const top = bad.list.find((x) => x.severity === 'critical') ?? bad.list[0];
-    const reason = top?.rule.startsWith('policy.') ? top.detail : `The scanner detected malware in ${bad.filename}.`;
+    // Policy problems (code in a resource pack, say) are the author's to fix, so they see them; for
+    // malware they only learn that it was found, and moderators get the details.
+    const reason = top?.rule.startsWith('policy.') ? top.detail : `Our checks found malware in ${bad.filename}.`;
+    const detail = top ? `${bad.filename}: ${top.detail}` : null;
     await env.DB.batch([
-      env.DB.prepare("UPDATE versions SET status = 'rejected', status_reason = ? WHERE id = ? AND status = 'scanning'").bind(reason.slice(0, 500), v.id),
+      env.DB.prepare("UPDATE versions SET status = 'rejected', status_reason = ?, review_detail = ? WHERE id = ? AND status = 'scanning'").bind(reason.slice(0, 500), detail?.slice(0, 2000) ?? null, v.id),
       audit(env, null, 'scan.malicious', 'version', v.id, { file: bad.id, findings: bad.list.slice(0, 10) }),
     ]);
     return 'rejected';
@@ -355,7 +358,11 @@ export async function decideVersion(env: Env, versionId: string): Promise<string
   if (sandbox.state === 'pending') return 'scanning';
   if (sandbox.state === 'done' && sandbox.malicious) {
     await env.DB.batch([
-      env.DB.prepare("UPDATE versions SET status = 'rejected', status_reason = ? WHERE id = ? AND status = 'scanning'").bind(sandbox.malicious.slice(0, 500), v.id),
+      env.DB.prepare("UPDATE versions SET status = 'rejected', status_reason = ?, review_detail = ? WHERE id = ? AND status = 'scanning'").bind(
+        'Our checks found malicious behaviour in this version.',
+        sandbox.malicious.slice(0, 2000),
+        v.id,
+      ),
       audit(env, null, 'sandbox.malicious', 'version', v.id, { reason: sandbox.malicious }),
     ]);
     return 'rejected';
@@ -372,7 +379,7 @@ export async function decideVersion(env: Env, versionId: string): Promise<string
   for (const f of all.filter((x) => x.verdict === 'suspicious')) {
     const fresh = f.list.filter((x) => (x.severity === 'high' || x.severity === 'critical') && (NEVER_CARRIED.test(x.rule) || !accepted.has(findingKey(f.kind, x))));
     if (!fresh.length) continue;
-    reasons.push(`Flagged by the scanner: ${fresh[0].detail}${fresh.length > 1 ? ` (and ${fresh.length - 1} more)` : ''}${f.kind === 'primary' ? '' : ` (${f.filename})`}`);
+    reasons.push(`Flagged by the scanner: ${publicFinding(fresh[0]).detail}${fresh.length > 1 ? ` (and ${fresh.length - 1} more)` : ''}${f.kind === 'primary' ? '' : ` (${f.filename})`}`);
   }
   if (v.approved_uploads < SITE.review.firstUploadsNeedReview) reasons.push('First upload from this account');
   if (Date.now() - v.github_created_at < SITE.review.minGithubAccountAgeDays * 86_400_000) reasons.push('New GitHub account');
@@ -388,7 +395,7 @@ export async function decideVersion(env: Env, versionId: string): Promise<string
   }
   if (reasons.length) {
     await env.DB.batch([
-      env.DB.prepare("UPDATE versions SET status = 'review', status_reason = ? WHERE id = ? AND status = 'scanning'").bind(reasons.join('. ').slice(0, 500), v.id),
+      env.DB.prepare("UPDATE versions SET status = 'review', status_reason = NULL, review_detail = ? WHERE id = ? AND status = 'scanning'").bind(reasons.join('. ').slice(0, 2000), v.id),
       audit(env, null, 'scan.review', 'version', v.id, { reasons }),
     ]);
     return 'review';
@@ -423,7 +430,7 @@ async function result(ctx: Ctx): Promise<Response> {
       await ctx.env.DB.batch([
         finish('failed', error),
         ...(job.kind === 'scan' && c.version_status === 'scanning'
-          ? [ctx.env.DB.prepare("UPDATE versions SET status = 'review', status_reason = 'Automatic scan could not finish; a moderator will check it.' WHERE id = ?").bind(c.version_id)]
+          ? [ctx.env.DB.prepare("UPDATE versions SET status = 'review', status_reason = NULL, review_detail = 'Automatic scan could not finish.' WHERE id = ?").bind(c.version_id)]
           : []),
         audit(ctx.env, null, 'scan.failed', 'version', c.version_id, { job: job.id, error }),
       ]);

@@ -15,7 +15,7 @@ function flow(): { icon: IconName; title: string; body: string }[] {
       icon: 'shield',
       title: t('2. We scan the exact bytes'),
       body: t(
-        'Our scanner pulls every file through a short-lived private link, unpacks every nested jar and runs ClamAV, YARA rules and bytecode checks tuned for Minecraft malware such as Fractureiser-style loaders, token stealers and self-spreading jar infectors. Resource packs, data packs and shaders are rejected outright if they contain any code.',
+        'Every file is fetched through a short-lived private link and scanned for malware, including every jar packed inside it. Mods, plugins and modpacks are also tried out in an isolated environment before they go live. Resource packs, data packs and shaders are rejected outright if they contain any code.',
       ),
     },
     {
@@ -77,7 +77,7 @@ export default function HowItWorks() {
             <strong>{t('Tampered records.')}</strong> {t('Fingerprints are signed by the scanner, so even someone with access to our database can’t forge a valid one. Comments and collections stored on GitHub are only shown if they still match the hash we recorded.')}
           </li>
           <li>
-            <strong>{t('Known malware.')}</strong> {t('Signature engines and Minecraft-specific rules catch known families and common tricks.')}
+            <strong>{t('Known malware.')}</strong> {t('Our checks catch known malware and common tricks.')}
           </li>
           <li>
             <strong>{t('Bad files found later.')}</strong> {t('Moderators can revoke a version and every download stops immediately, including in launchers that use our API.')}

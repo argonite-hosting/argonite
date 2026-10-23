@@ -113,7 +113,7 @@ function ScanResult({ version, project, onAnother }: { version: Version; project
         {s === 'live'
           ? t('It passed the scan, its GitHub release is now published, and players can download it.')
           : s === 'review'
-            ? t('It passed automated checks but needs a quick human look: {reason}. Its GitHub release stays a draft until then.', { reason: version.statusReason ?? t('routine review') })
+            ? t('A moderator will take a quick look before it goes live. Its GitHub release stays a draft until then.')
             : (version.statusReason ?? t('Check your dashboard for details.'))}
       </p>
       {findings.length > 0 && (

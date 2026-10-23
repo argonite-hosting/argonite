@@ -77,9 +77,9 @@ function Queue({ status }: { status: 'review' | 'rejected' }) {
               </div>
             </header>
             <div class="review-body">
-              {v.statusReason && (
+              {(v.reviewDetail || v.statusReason) && (
                 <p class="manage-reason">
-                  <Icon name="info" /> {v.statusReason}
+                  <Icon name="info" /> {v.reviewDetail || v.statusReason}
                 </p>
               )}
               <dl class="kv review-kv">
@@ -120,7 +120,7 @@ function Queue({ status }: { status: 'review' | 'rejected' }) {
                   ))}
                 </ul>
               )}
-              <SandboxList runs={v.sandbox} />
+              <SandboxList runs={v.sandbox} detailed />
             </div>
             <footer class="review-foot">
               {v.releaseUrl && (

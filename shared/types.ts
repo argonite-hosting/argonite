@@ -177,6 +177,8 @@ export interface Version {
   channel: Channel;
   status: VersionStatus;
   statusReason: string | null;
+  // Why the automatic checks held or rejected it; only sent to moderators.
+  reviewDetail?: string | null;
   loaders: string[];
   gameVersions: string[];
   dependencies: Dependency[];

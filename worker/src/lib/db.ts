@@ -169,6 +169,7 @@ interface VersionRow {
   channel: Channel;
   status: VersionStatus;
   status_reason: string | null;
+  review_detail: string | null;
   tag: string;
   release_id: number | null;
   downloads: number;
@@ -224,7 +225,21 @@ export interface VersionQuery {
   ids?: string[];
   statuses: VersionStatus[];
   includeScan?: boolean;
+  // Moderators see which engine or rule made each finding; everyone else gets plain wording.
+  staff?: boolean;
   limit?: number;
+}
+
+// How a finding is shown to anyone but moderators: no scanner, rule or feed names, which would only
+// help someone tune their malware against our checks.
+export function publicFinding(f: Finding): Finding {
+  const plain = (rule: string, detail: string): Finding => ({ ...f, rule, detail });
+  if (/^clamav/.test(f.rule)) return plain('malware.known', 'Matches known malware');
+  if (/^yara\./.test(f.rule)) return plain('malware.pattern', 'Matches a known malware pattern');
+  if (/^reputation\./.test(f.rule)) return plain('malware.reputation', 'This exact file is known to be malicious');
+  if (/^ioc\./.test(f.rule)) return plain('malware.indicator', 'Contains a known sign of malware');
+  if (f.rule === 'link.malicious_url') return plain(f.rule, f.detail.replace(/listed on \S+ as serving malware/i, 'known to serve malware'));
+  return f;
 }
 
 function fileInfo(f: FileRow, repoId: number, releaseId: number): FileInfo | null {
@@ -247,12 +262,15 @@ function fileInfo(f: FileRow, repoId: number, releaseId: number): FileInfo | nul
   };
 }
 
-function scanOf(f: FileRow): ScanSummary {
+function scanOf(f: FileRow, staff: boolean): ScanSummary {
+  const findings = parseJson<Finding[]>(f.findings, []);
   return {
     verdict: f.verdict,
-    findings: parseJson<Finding[]>(f.findings, []),
-    capabilities: parseJson<string[]>(f.capabilities, []),
-    engines: parseJson<string[]>(f.engines, []),
+    // Authors see their files' verdicts, natives and links, but not which checks fired: that would let
+    // someone tune malware against them. Moderators see everything.
+    findings: staff ? findings : [],
+    capabilities: staff ? parseJson<string[]>(f.capabilities, []) : [],
+    engines: staff ? parseJson<string[]>(f.engines, []) : [],
     scannedAt: f.scanned_at,
     natives: parseJson<NativeFile[]>(f.natives, []),
     hosts: parseJson<string[]>(f.hosts, []),
@@ -301,7 +319,7 @@ export async function loadVersions(env: Env, q: VersionQuery): Promise<Version[]
   ]);
   const sandboxRows = q.includeScan
     ? (
-        await env.DB.prepare(`SELECT version_id, file_id, os, status, outcome, summary, findings, finished_at FROM sandbox_runs WHERE version_id IN (${scope})`)
+        await env.DB.prepare(`SELECT version_id, file_id, os, status, outcome, summary, findings, error, finished_at FROM sandbox_runs WHERE version_id IN (${scope})`)
           .bind(...binds)
           .all<SummaryRow & { version_id: string; file_id: string }>()
       ).results
@@ -340,6 +358,7 @@ export async function loadVersions(env: Env, q: VersionQuery): Promise<Version[]
       channel: r.channel,
       status: r.status,
       statusReason: r.status_reason,
+      ...(q.staff ? { reviewDetail: r.review_detail } : {}),
       loaders: (lMap.get(r.id) ?? []).map((x) => x.loader),
       gameVersions: sortGameVersionsDesc((gMap.get(r.id) ?? []).map((x) => x.game_version)),
       dependencies: (dMap.get(r.id) ?? []).map(
@@ -362,10 +381,10 @@ export async function loadVersions(env: Env, q: VersionQuery): Promise<Version[]
       releaseUrl: r.release_id ? `https://github.com/${r.repo_full_name}/releases/tag/${encodeURIComponent(r.tag)}` : null,
       ...(q.includeScan
         ? {
-            scan: primaryRow ? scanOf(primaryRow) : { verdict: null, findings: [], capabilities: [], engines: [], scannedAt: null, natives: [], hosts: [] },
-            scans: Object.fromEntries(fileRows.map((f) => [f.id, { ...scanOf(f), filename: f.filename, kind: f.kind, uploaded: f.asset_id !== null }])),
+            scan: primaryRow ? scanOf(primaryRow, q.staff === true) : { verdict: null, findings: [], capabilities: [], engines: [], scannedAt: null, natives: [], hosts: [] },
+            scans: Object.fromEntries(fileRows.map((f) => [f.id, { ...scanOf(f, q.staff === true), filename: f.filename, kind: f.kind, uploaded: f.asset_id !== null }])),
             publishPending: r.publish_pending === 1,
-            sandbox: summariesOf(sandboxRows.filter((x) => x.version_id === r.id && x.file_id === primaryRow?.id)),
+            sandbox: summariesOf(sandboxRows.filter((x) => x.version_id === r.id && x.file_id === primaryRow?.id), q.staff === true),
           }
         : {}),
     };

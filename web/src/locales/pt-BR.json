@@ -295,7 +295,6 @@
   "Every file in a version’s files list carries sha1, sha256, sha512 and an Ed25519 signature (base64). The signature covers this exact UTF-8 string, lines joined with a newline:": "Cada arquivo na lista de arquivos de uma versão traz sha1, sha256, sha512 e uma assinatura Ed25519 (base64). A assinatura cobre exatamente esta string UTF-8, com as linhas unidas por quebra de linha:",
   "Every file was downloaded, matched against the pack’s hashes and scanned before this version went live.": "Cada arquivo foi baixado, conferido com os hashes do pack e analisado antes de esta versão ser publicada.",
   "Every mod a modpack downloads is fetched from its listed host, matched against the pack’s hashes and scanned too. Files already published here are recognised by their fingerprint.": "Cada mod que um modpack baixa é obtido do host indicado, conferido com os hashes do pack e analisado também. Arquivos já publicados aqui são reconhecidos pela impressão digital.",
-  "Every nested jar is unpacked and checked with ClamAV, YARA rules and Minecraft-specific bytecode analysis.": "Cada jar aninhado é descompactado e verificado com ClamAV, regras YARA e análise de bytecode específica para Minecraft.",
   "Every version in the": "Cada versão na",
   "Everyone": "Todos",
   "Everything is inside a “{folder}” folder. Zip the folder’s contents instead, or Minecraft won’t find it.": "Tudo está dentro de uma pasta “{folder}”. Compacte o conteúdo da pasta em vez disso, ou o Minecraft não vai encontrá-lo.",
@@ -431,7 +430,6 @@
   "It may be private or deleted.": "Pode ser privado ou ter sido excluído.",
   "It may have been removed or is not live.": "Pode ter sido removido ou não estar publicado.",
   "It may have been removed, or the link is wrong.": "Pode ter sido removido, ou o link está errado.",
-  "It passed automated checks but needs a quick human look: {reason}. Its GitHub release stays a draft until then.": "Passou nas verificações automáticas, mas precisa de uma olhada humana rápida: {reason}. A release do GitHub continua como rascunho até lá.",
   "It passed the scan, its GitHub release is now published, and players can download it.": "Passou na análise, a release do GitHub já foi publicada e os jogadores podem baixá-la.",
   "It stays private as a draft until your first version passes its scan.": "Ele fica privado como rascunho até sua primeira versão passar na análise.",
   "It was committed to your repository.": "Foi gravado no seu repositório com um commit.",
@@ -647,7 +645,6 @@
   "Organisations": "Organizações",
   "Organisations share projects between a team, with permissions per member.": "Organizações compartilham projetos entre uma equipe, com permissões por membro.",
   "Other file": "Outro arquivo",
-  "Our scanner pulls every file through a short-lived private link, unpacks every nested jar and runs ClamAV, YARA rules and bytecode checks tuned for Minecraft malware such as Fractureiser-style loaders, token stealers and self-spreading jar infectors. Resource packs, data packs and shaders are rejected outright if they contain any code.": "Nosso analisador obtém cada arquivo por um link privado de curta duração, descompacta cada jar aninhado e roda ClamAV, regras YARA e verificações de bytecode ajustadas para malware de Minecraft, como carregadores no estilo Fractureiser, ladrões de token e infectores de jar que se espalham sozinhos. Resource packs, data packs e shaders são rejeitados de cara se contiverem qualquer código.",
   "Overview": "Visão geral",
   "Owned by": "Pertence a",
   "Owner": "Dono",
@@ -791,7 +788,6 @@
   "Role": "Função",
   "Role updated": "Função atualizada",
   "Roleplay": "Roleplay",
-  "routine review": "revisão de rotina",
   "RSS feed": "Feed RSS",
   "RSS feed of everything you follow": "Feed RSS de tudo o que você segue",
   "Runs on": "Roda em",
@@ -881,7 +877,6 @@
   "Sign-in didn’t complete": "O login não foi concluído",
   "Sign-in problem": "Problema no login",
   "signature": "assinatura",
-  "Signature engines and Minecraft-specific rules catch known families and common tricks.": "Motores de assinaturas e regras específicas para Minecraft pegam famílias conhecidas e truques comuns.",
   "Signature invalid": "Assinatura inválida",
   "Signature valid": "Assinatura válida",
   "Signed out everywhere": "Saiu de todos os dispositivos",
@@ -1196,5 +1191,9 @@
     "one": "observado por {n} minuto",
     "other": "observado por {n} minutos"
   },
-  "We’re scanning your files. This can take from a few minutes up to about an hour. You can leave this page; the result also appears on your dashboard.": "Estamos verificando seus arquivos. Isso pode levar de alguns minutos até cerca de uma hora. Você pode sair desta página; o resultado também aparece no seu painel."
+  "We’re scanning your files. This can take from a few minutes up to about an hour. You can leave this page; the result also appears on your dashboard.": "Estamos verificando seus arquivos. Isso pode levar de alguns minutos até cerca de uma hora. Você pode sair desta página; o resultado também aparece no seu painel.",
+  "Every file, and every jar packed inside it, is scanned for malware before it goes live.": "Cada arquivo, e cada jar dentro dele, é verificado contra malware antes de ser publicado.",
+  "Every file is fetched through a short-lived private link and scanned for malware, including every jar packed inside it. Mods, plugins and modpacks are also tried out in an isolated environment before they go live. Resource packs, data packs and shaders are rejected outright if they contain any code.": "Cada arquivo é obtido por um link privado de curta duração e verificado contra malware, incluindo cada jar dentro dele. Mods, plugins e modpacks também são testados em um ambiente isolado antes de serem publicados. Pacotes de recursos, pacotes de dados e shaders são rejeitados de imediato se contiverem qualquer código.",
+  "Our checks catch known malware and common tricks.": "Nossas verificações detectam malware conhecido e truques comuns.",
+  "A moderator will take a quick look before it goes live. Its GitHub release stays a draft until then.": "Um moderador vai dar uma olhada antes de publicá-la. A release no GitHub continua como rascunho até lá."
 }

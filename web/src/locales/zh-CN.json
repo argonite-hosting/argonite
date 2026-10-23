@@ -293,7 +293,6 @@
   "Every file in a version’s files list carries sha1, sha256, sha512 and an Ed25519 signature (base64). The signature covers this exact UTF-8 string, lines joined with a newline:": "版本文件列表中的每个文件都带有 sha1、sha256、sha512 和 Ed25519 签名（base64）。签名覆盖以下 UTF-8 字符串，各行以换行符连接：",
   "Every file was downloaded, matched against the pack’s hashes and scanned before this version went live.": "此版本上线前，每个文件都已下载、与整合包的哈希比对并完成扫描。",
   "Every mod a modpack downloads is fetched from its listed host, matched against the pack’s hashes and scanned too. Files already published here are recognised by their fingerprint.": "整合包要下载的每个模组都会从其指定来源获取、与整合包的哈希比对并同样进行扫描。已在本站发布的文件会通过指纹识别。",
-  "Every nested jar is unpacked and checked with ClamAV, YARA rules and Minecraft-specific bytecode analysis.": "每个嵌套的 jar 都会被解包，并经过 ClamAV、YARA 规则以及针对 Minecraft 的字节码分析。",
   "Every version in the": "通过",
   "Everyone": "所有人",
   "Everything is inside a “{folder}” folder. Zip the folder’s contents instead, or Minecraft won’t find it.": "所有内容都在“{folder}”文件夹里。请直接压缩该文件夹内的内容，否则 Minecraft 找不到它。",
@@ -427,7 +426,6 @@
   "It may be private or deleted.": "它可能是私有的或已被删除。",
   "It may have been removed or is not live.": "它可能已被移除或尚未上线。",
   "It may have been removed, or the link is wrong.": "它可能已被移除，或链接有误。",
-  "It passed automated checks but needs a quick human look: {reason}. Its GitHub release stays a draft until then.": "它已通过自动检查，但需要人工快速查看：{reason}。在此之前，其 GitHub Release 将保持草稿状态。",
   "It passed the scan, its GitHub release is now published, and players can download it.": "它已通过扫描，GitHub Release 已发布，玩家现在可以下载。",
   "It stays private as a draft until your first version passes its scan.": "在你的首个版本通过扫描前，它会作为草稿保持私密。",
   "It was committed to your repository.": "已提交到你的仓库。",
@@ -643,7 +641,6 @@
   "Organisations": "组织",
   "Organisations share projects between a team, with permissions per member.": "组织可在团队内共享项目，并为每位成员单独设置权限。",
   "Other file": "其他文件",
-  "Our scanner pulls every file through a short-lived private link, unpacks every nested jar and runs ClamAV, YARA rules and bytecode checks tuned for Minecraft malware such as Fractureiser-style loaders, token stealers and self-spreading jar infectors. Resource packs, data packs and shaders are rejected outright if they contain any code.": "我们的扫描器通过短时有效的私有链接获取每个文件，解包每个嵌套的 jar，并运行 ClamAV、YARA 规则以及针对 Minecraft 恶意软件调校的字节码检查，例如 Fractureiser 类加载器、令牌窃取程序和自我传播的 jar 感染程序。资源包、数据包和光影只要包含任何代码就会被直接拒绝。",
   "Overview": "概览",
   "Owned by": "所有者",
   "Owner": "所有者",
@@ -787,7 +784,6 @@
   "Role": "角色",
   "Role updated": "角色已更新",
   "Roleplay": "角色扮演",
-  "routine review": "常规审核",
   "RSS feed": "RSS 订阅",
   "RSS feed of everything you follow": "你关注内容的 RSS 订阅",
   "Runs on": "运行于",
@@ -877,7 +873,6 @@
   "Sign-in didn’t complete": "登录未完成",
   "Sign-in problem": "登录问题",
   "signature": "签名",
-  "Signature engines and Minecraft-specific rules catch known families and common tricks.": "特征码引擎和针对 Minecraft 的规则可识别已知的恶意软件家族和常见伎俩。",
   "Signature invalid": "签名无效",
   "Signature valid": "签名有效",
   "Signed out everywhere": "已在所有设备上退出",
@@ -1184,5 +1179,9 @@
   "watched {n} minutes": {
     "other": "观察了 {n} 分钟"
   },
-  "We’re scanning your files. This can take from a few minutes up to about an hour. You can leave this page; the result also appears on your dashboard.": "我们正在扫描你的文件。这可能需要几分钟到大约一小时。你可以离开此页面；结果也会显示在你的控制面板中。"
+  "We’re scanning your files. This can take from a few minutes up to about an hour. You can leave this page; the result also appears on your dashboard.": "我们正在扫描你的文件。这可能需要几分钟到大约一小时。你可以离开此页面；结果也会显示在你的控制面板中。",
+  "Every file, and every jar packed inside it, is scanned for malware before it goes live.": "每个文件及其内部的每个 jar 在发布前都会进行恶意软件扫描。",
+  "Every file is fetched through a short-lived private link and scanned for malware, including every jar packed inside it. Mods, plugins and modpacks are also tried out in an isolated environment before they go live. Resource packs, data packs and shaders are rejected outright if they contain any code.": "每个文件都通过短期有效的私有链接获取并进行恶意软件扫描，包括其中的每个 jar。模组、插件和整合包在发布前还会在隔离环境中试运行。资源包、数据包和光影如果包含任何代码，会被直接拒绝。",
+  "Our checks catch known malware and common tricks.": "我们的检查能发现已知恶意软件和常见手法。",
+  "A moderator will take a quick look before it goes live. Its GitHub release stays a draft until then.": "版主会在发布前快速检查一下。在此之前，它的 GitHub 发布会保持为草稿。"
 }

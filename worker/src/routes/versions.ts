@@ -7,7 +7,7 @@ import { requireActor } from '../lib/auth';
 import { newId } from '../lib/crypto';
 import { loadVersions, recomputeProject } from '../lib/db';
 import { GitHubError, dispatchScan, gh, repoPath, type GitHubRelease } from '../lib/github';
-import { audit, rateLimit, requirePerm, verifyTurnstile, type ProjectAccess } from '../lib/guard';
+import { audit, isStaff, rateLimit, requirePerm, verifyTurnstile, type ProjectAccess } from '../lib/guard';
 import { HttpError, badRequest, conflict, forbidden, json, notFound, readJson } from '../lib/http';
 import { check, int, oneOf, str, strArray } from '../lib/input';
 import { goLive } from '../lib/publish';
@@ -419,8 +419,13 @@ async function retryPublish(ctx: Ctx): Promise<Response> {
 }
 
 async function versionStatus(ctx: Ctx): Promise<Response> {
-  const { v } = await versionForMember(ctx, 0, SCOPE.VERSIONS_WRITE);
-  const [full] = await loadVersions(ctx.env, { ids: [v.id], statuses: ['uploading', 'scanning', 'review', 'live', 'rejected', 'revoked', 'unavailable'], includeScan: true });
+  const { v, actor } = await versionForMember(ctx, 0, SCOPE.VERSIONS_WRITE);
+  const [full] = await loadVersions(ctx.env, {
+    ids: [v.id],
+    statuses: ['uploading', 'scanning', 'review', 'live', 'rejected', 'revoked', 'unavailable'],
+    includeScan: true,
+    staff: isStaff(actor.user),
+  });
   if (!full) throw notFound('Version not found.');
   return json({ version: full });
 }

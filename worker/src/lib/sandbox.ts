@@ -306,9 +306,9 @@ export async function sandboxStage(env: Env, versionId: string, projectType: str
   return { state: 'done', malicious: null, reasons };
 }
 
-export type SummaryRow = Pick<RunRow, 'os' | 'status' | 'outcome' | 'summary' | 'findings'> & { finished_at: number | null };
+export type SummaryRow = Pick<RunRow, 'os' | 'status' | 'outcome' | 'summary' | 'findings' | 'error'> & { finished_at: number | null };
 
-export function summariesOf(rows: SummaryRow[]): SandboxSummary[] {
+export function summariesOf(rows: SummaryRow[], staff = true): SandboxSummary[] {
   return rows
     .map((r) => {
       const base = parseJson<SandboxSummary | null>(r.summary, null);
@@ -317,7 +317,7 @@ export function summariesOf(rows: SummaryRow[]): SandboxSummary[] {
       return {
         os,
         outcome,
-        note: base?.note ?? (r.status === 'failed' ? 'The test machine didn’t finish.' : null),
+        note: staff ? (base?.note ?? (r.status === 'failed' ? `The test machine didn’t finish${r.error ? `: ${r.error}` : '.'}` : null)) : null,
         gameVersion: base?.gameVersion ?? null,
         loader: base?.loader ?? null,
         server: base?.server ?? false,
@@ -325,7 +325,7 @@ export function summariesOf(rows: SummaryRow[]): SandboxSummary[] {
         joined: base?.joined ?? false,
         dependencies: base?.dependencies ?? 0,
         watched: base?.watched ?? 0,
-        findings: parseJson<Finding[]>(r.findings, []),
+        findings: staff ? parseJson<Finding[]>(r.findings, []) : [],
         finishedAt: r.finished_at,
       };
     })

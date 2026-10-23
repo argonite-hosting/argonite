@@ -75,7 +75,8 @@ export function HostList({ hosts }: { hosts: string[] }) {
 const SANDBOX_OS: Record<SandboxSummary['os'], string> = { linux: 'Linux', windows: 'Windows', macos: 'macOS' };
 
 // What the behaviour tests saw when the file ran inside real Minecraft on fresh machines.
-export function SandboxList({ runs }: { runs?: SandboxSummary[] }) {
+// Authors get each machine's status only; `detailed` (moderators) adds what it saw.
+export function SandboxList({ runs, detailed = false }: { runs?: SandboxSummary[]; detailed?: boolean }) {
   if (!runs?.length) return null;
   const outcome = (r: SandboxSummary) =>
     r.outcome === 'running' ? t('Running') : r.outcome === 'tested' ? t('Tested') : r.outcome === 'unsupported' ? t('Not tested') : t('Didn’t finish');
@@ -113,7 +114,7 @@ export function SandboxList({ runs }: { runs?: SandboxSummary[] }) {
                 ))}
               </ul>
             ) : (
-              r.outcome === 'tested' && <p class="field-hint">{t('Nothing suspicious happened.')}</p>
+              detailed && r.outcome === 'tested' && <p class="field-hint">{t('Nothing suspicious happened.')}</p>
             )}
           </li>
         ))}

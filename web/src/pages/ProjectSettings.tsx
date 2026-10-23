@@ -476,7 +476,7 @@ function ScanDetail({ v }: { v: Version }) {
             <strong class="mono">{s.filename}</strong>
             <span class="badge">{t(FILE_KIND_LABELS[s.kind])}</span>
             <span class="field-hint">
-              {t('Verdict')}: {s.verdict ? t(s.verdict) : s.uploaded ? t('pending') : t('not uploaded')} · {t('Engines')}: {s.engines.join(', ') || '—'}
+              {t('Verdict')}: {s.verdict ? t(s.verdict) : s.uploaded ? t('pending') : t('not uploaded')}
             </span>
             {isStaff(user) && s.uploaded && (
               <button type="button" class="btn btn-ghost btn-sm" onClick={() => openFile(id)}>
@@ -508,11 +508,11 @@ function ScanDetail({ v }: { v: Version }) {
               ))}
             </ul>
           ) : (
-            s.verdict && <span class="field-hint">{t('No findings.')}</span>
+            s.verdict && isStaff(user) && <span class="field-hint">{t('No findings.')}</span>
           )}
         </div>
       ))}
-      <SandboxList runs={v.sandbox} />
+      <SandboxList runs={v.sandbox} detailed={isStaff(user)} />
     </div>
   );
 }

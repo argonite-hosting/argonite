@@ -55,7 +55,7 @@ async function sweepScans(env: Env): Promise<void> {
     await env.DB.batch([
       env.DB.prepare("UPDATE scan_jobs SET status = 'failed', error = 'timed out', finished_at = ? WHERE id = ?").bind(now, job.id),
       env.DB.prepare(
-        "UPDATE versions SET status = 'review', status_reason = 'Automatic scan timed out; a moderator will check it.' WHERE id = ? AND status = 'scanning'",
+        "UPDATE versions SET status = 'review', status_reason = NULL, review_detail = 'Automatic scan timed out.' WHERE id = ? AND status = 'scanning'",
       ).bind(job.version_id),
       audit(env, null, 'scan.timeout', 'version', job.version_id, { job: job.id }),
     ]);

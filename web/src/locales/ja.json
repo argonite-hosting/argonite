@@ -293,7 +293,6 @@
   "Every file in a version’s files list carries sha1, sha256, sha512 and an Ed25519 signature (base64). The signature covers this exact UTF-8 string, lines joined with a newline:": "バージョンのファイル一覧にある各ファイルには、sha1、sha256、sha512 と Ed25519 署名（base64）が含まれます。署名の対象は、改行で結合した次の UTF-8 文字列そのものです:",
   "Every file was downloaded, matched against the pack’s hashes and scanned before this version went live.": "このバージョンの公開前に、すべてのファイルをダウンロードし、パックのハッシュと照合してスキャンしました。",
   "Every mod a modpack downloads is fetched from its listed host, matched against the pack’s hashes and scanned too. Files already published here are recognised by their fingerprint.": "Modpack がダウンロードする MOD もすべて、記載されたホストから取得し、パックのハッシュと照合してスキャンします。ここで公開済みのファイルはフィンガープリントで識別されます。",
-  "Every nested jar is unpacked and checked with ClamAV, YARA rules and Minecraft-specific bytecode analysis.": "入れ子の jar もすべて展開し、ClamAV、YARA ルール、Minecraft 向けのバイトコード解析で確認します。",
   "Every version in the": "各バージョンは",
   "Everyone": "全員",
   "Everything is inside a “{folder}” folder. Zip the folder’s contents instead, or Minecraft won’t find it.": "すべてが「{folder}」フォルダーの中に入っています。フォルダーの中身を直接 zip にしないと、Minecraft が認識できません。",
@@ -427,7 +426,6 @@
   "It may be private or deleted.": "非公開になったか、削除された可能性があります。",
   "It may have been removed or is not live.": "削除されたか、公開されていない可能性があります。",
   "It may have been removed, or the link is wrong.": "削除されたか、リンクが間違っている可能性があります。",
-  "It passed automated checks but needs a quick human look: {reason}. Its GitHub release stays a draft until then.": "自動チェックには合格しましたが、人による簡単な確認が必要です: {reason}。それまで GitHub リリースは下書きのままです。",
   "It passed the scan, its GitHub release is now published, and players can download it.": "スキャンに合格し、GitHub リリースが公開されました。プレイヤーがダウンロードできます。",
   "It stays private as a draft until your first version passes its scan.": "最初のバージョンがスキャンに合格するまで、下書きとして非公開のままです。",
   "It was committed to your repository.": "リポジトリにコミットされました。",
@@ -643,7 +641,6 @@
   "Organisations": "組織",
   "Organisations share projects between a team, with permissions per member.": "組織を使うと、メンバーごとの権限付きでチーム内でプロジェクトを共有できます。",
   "Other file": "その他のファイル",
-  "Our scanner pulls every file through a short-lived private link, unpacks every nested jar and runs ClamAV, YARA rules and bytecode checks tuned for Minecraft malware such as Fractureiser-style loaders, token stealers and self-spreading jar infectors. Resource packs, data packs and shaders are rejected outright if they contain any code.": "スキャナーは短時間だけ有効な非公開リンクで各ファイルを取得し、入れ子の jar をすべて展開して、ClamAV、YARA ルール、Minecraft 向けに調整したバイトコードチェックを実行します。Fractureiser 型のローダー、トークン窃取、自己増殖する jar 感染型などのマルウェアが対象です。リソースパック、データパック、シェーダーは、コードを少しでも含んでいれば即座に却下されます。",
   "Overview": "概要",
   "Owned by": "所有者",
   "Owner": "オーナー",
@@ -787,7 +784,6 @@
   "Role": "役割",
   "Role updated": "役割を更新しました",
   "Roleplay": "ロールプレイ",
-  "routine review": "定期確認",
   "RSS feed": "RSS フィード",
   "RSS feed of everything you follow": "フォロー中のすべての RSS フィード",
   "Runs on": "対応",
@@ -877,7 +873,6 @@
   "Sign-in didn’t complete": "ログインが完了しませんでした",
   "Sign-in problem": "ログインの問題",
   "signature": "署名",
-  "Signature engines and Minecraft-specific rules catch known families and common tricks.": "シグネチャエンジンと Minecraft 向けのルールが、既知のマルウェアファミリーや典型的な手口を検出します。",
   "Signature invalid": "署名が無効です",
   "Signature valid": "署名は有効です",
   "Signed out everywhere": "すべての端末からログアウトしました",
@@ -1184,5 +1179,9 @@
   "watched {n} minutes": {
     "other": "{n} 分間監視"
   },
-  "We’re scanning your files. This can take from a few minutes up to about an hour. You can leave this page; the result also appears on your dashboard.": "ファイルをスキャンしています。数分から 1 時間ほどかかることがあります。このページを離れても構いません。結果はダッシュボードにも表示されます。"
+  "We’re scanning your files. This can take from a few minutes up to about an hour. You can leave this page; the result also appears on your dashboard.": "ファイルをスキャンしています。数分から 1 時間ほどかかることがあります。このページを離れても構いません。結果はダッシュボードにも表示されます。",
+  "Every file, and every jar packed inside it, is scanned for malware before it goes live.": "すべてのファイルと、その中に含まれるすべての jar は、公開前にマルウェアスキャンされます。",
+  "Every file is fetched through a short-lived private link and scanned for malware, including every jar packed inside it. Mods, plugins and modpacks are also tried out in an isolated environment before they go live. Resource packs, data packs and shaders are rejected outright if they contain any code.": "すべてのファイルは短時間だけ有効な非公開リンクで取得され、中に含まれるすべての jar も含めてマルウェアスキャンされます。Mod、プラグイン、Modpack は公開前に隔離された環境でも試されます。リソースパック、データパック、シェーダーは、コードが含まれていればその時点で拒否されます。",
+  "Our checks catch known malware and common tricks.": "私たちのチェックは既知のマルウェアとよくある手口を検出します。",
+  "A moderator will take a quick look before it goes live. Its GitHub release stays a draft until then.": "公開前にモデレーターが簡単に確認します。それまで GitHub のリリースは下書きのままです。"
 }

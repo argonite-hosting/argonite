@@ -111,7 +111,7 @@ function List({ title, sort, href }: { title: string; sort: string; href: string
 
 const pipeline = () => [
   { title: t('Upload'), body: t('The author publishes to a release in their own GitHub repository. We never host the file.') },
-  { title: t('Scan'), body: t('Every nested jar is unpacked and checked with ClamAV, YARA rules and Minecraft-specific bytecode analysis.') },
+  { title: t('Scan'), body: t('Every file, and every jar packed inside it, is scanned for malware before it goes live.') },
   { title: t('Sign'), body: t('Passing files get SHA-256 and SHA-512 fingerprints, signed with a key only the scanner holds.') },
   { title: t('Verify'), body: t('Your browser re-checks the signature and both hashes before saving. A mismatch blocks the download.') },
 ];
