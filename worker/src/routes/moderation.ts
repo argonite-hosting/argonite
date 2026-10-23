@@ -88,6 +88,17 @@ async function decide(ctx: Ctx): Promise<Response> {
     if (own) throw forbidden('Another moderator has to review versions of projects you’re part of.');
   }
   if ((action === 'approve' || action === 'restore') && (!v.files || v.verified !== v.files)) throw conflict('Not every file in this version has a verified fingerprint, so it cannot go live.');
+  // A rejected version's files are retired; bringing it back can't put a second copy of a file up.
+  if (action === 'restore' && v.status === 'rejected') {
+    const copy = await ctx.env.DB.prepare(
+      `SELECT p.name, x.version_number FROM files f JOIN files o ON o.sha512 = f.sha512 AND o.id != f.id AND o.retired = 0
+       JOIN versions x ON x.id = o.version_id JOIN projects p ON p.id = x.project_id
+       WHERE f.version_id = ? LIMIT 1`,
+    )
+      .bind(v.id)
+      .first<{ name: string; version_number: string }>();
+    if (copy) throw conflict(`The same file is already on the site in ${copy.name} ${copy.version_number}. Revoke or delete that version first.`);
+  }
   if ((action === 'reject' || action === 'revoke') && reason.length < 3) throw badRequest('Give a reason; the author will see it.', { reason: 'Required.' });
 
   if (action === 'approve' || action === 'restore') {

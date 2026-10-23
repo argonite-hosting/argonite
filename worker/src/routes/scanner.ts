@@ -319,6 +319,54 @@ function acceptedFindings(prev: PrevFile[]): Set<string> {
   );
 }
 
+interface ModrinthMatch {
+  project: string;
+  title: string;
+  slug: string;
+  sources: string[];
+}
+
+// The Modrinth project a file is published under, if any. Lookups that fail are treated as no match.
+async function modrinthProject(sha512: string): Promise<ModrinthMatch | null> {
+  try {
+    const headers = { 'User-Agent': `${SITE.name}/1 (${SITE.url})`, Accept: 'application/json' };
+    const v = await fetch(`https://api.modrinth.com/v2/version_file/${sha512}?algorithm=sha512`, { headers, signal: AbortSignal.timeout(5000) });
+    if (!v.ok) return null;
+    const { project_id } = (await v.json()) as { project_id?: string };
+    if (!project_id || !/^[A-Za-z0-9]{1,16}$/.test(project_id)) return null;
+    const p = await fetch(`https://api.modrinth.com/v2/project/${project_id}`, { headers, signal: AbortSignal.timeout(5000) });
+    if (!p.ok) return null;
+    const d = (await p.json()) as { title?: string; slug?: string; source_url?: string | null; issues_url?: string | null; wiki_url?: string | null };
+    return { project: project_id, title: String(d.title ?? project_id).slice(0, 80), slug: String(d.slug ?? project_id).slice(0, 64), sources: [d.source_url, d.issues_url, d.wiki_url].filter((x): x is string => typeof x === 'string') };
+  } catch {
+    return null;
+  }
+}
+
+// A reason to check who really made a file: it's published on Modrinth under a project that doesn't
+// point at this project's GitHub repository (and no earlier approved version matched that project).
+async function copyReasons(env: Env, versionId: string, projectId: string): Promise<string[]> {
+  const me = await env.DB.prepare('SELECT repo_full_name FROM projects WHERE id = ?').bind(projectId).first<{ repo_full_name: string }>();
+  if (!me) return [];
+  const files = (await env.DB.prepare('SELECT id, sha512 FROM files WHERE version_id = ? AND sha512 IS NOT NULL').bind(versionId).all<{ id: string; sha512: string }>()).results;
+  const reasons: string[] = [];
+  for (const f of files.slice(0, 5)) {
+    const match = await modrinthProject(f.sha512);
+    if (!match) continue;
+    await env.DB.prepare('UPDATE files SET modrinth_project = ? WHERE id = ?').bind(match.project, f.id).run();
+    const repo = `github.com/${me.repo_full_name}`.toLowerCase();
+    if (match.sources.some((u) => u.toLowerCase().replace(/\.git$/, '').includes(repo))) continue;
+    // Already accepted for this project by a moderator on an earlier version.
+    const accepted = await env.DB.prepare(
+      "SELECT 1 FROM files x JOIN versions v ON v.id = x.version_id WHERE v.project_id = ? AND v.status = 'live' AND x.modrinth_project = ? LIMIT 1",
+    )
+      .bind(projectId, match.project)
+      .first();
+    if (!accepted) reasons.push(`Also published on Modrinth as ${match.title} (modrinth.com/project/${match.slug}), which doesn't link to this project's repository; check the uploader is its author`);
+  }
+  return reasons;
+}
+
 // The version is decided once every file has a fingerprint: any malicious file rejects it, any reason
 // to look closer sends it to review, otherwise it goes live (and its GitHub release gets published).
 export async function decideVersion(env: Env, versionId: string): Promise<string> {
@@ -362,6 +410,7 @@ export async function decideVersion(env: Env, versionId: string): Promise<string
     if (!fresh.length) continue;
     reasons.push(`Flagged by the scanner: ${publicFinding(fresh[0]).detail}${fresh.length > 1 ? ` (and ${fresh.length - 1} more)` : ''}${f.kind === 'primary' ? '' : ` (${f.filename})`}`);
   }
+  reasons.push(...(await copyReasons(env, v.id, v.project_id)));
   if (v.approved_uploads < SITE.review.firstUploadsNeedReview) reasons.push('First upload from this account');
   if (Date.now() - v.github_created_at < SITE.review.minGithubAccountAgeDays * 86_400_000) reasons.push('New GitHub account');
   const capabilities = [...new Set(all.flatMap((f) => parseJson<string[]>(f.capabilities, [])))];
@@ -484,28 +533,38 @@ async function result(ctx: Ctx): Promise<Response> {
   const metadata = rawMeta.length <= 32_000 ? rawMeta : JSON.stringify({ truncated: true });
   const contents = c.project_type === 'modpack' && c.file_kind === 'primary' ? cleanContents(r.contents) : null;
 
-  const duplicate = await ctx.env.DB.prepare(
-    `SELECT p.name, p.slug FROM files f JOIN versions v ON v.id = f.version_id JOIN projects p ON p.id = v.project_id
-     WHERE f.sha512 = ? AND f.id != ? LIMIT 1`,
+  // The same bytes elsewhere on the site are refused. Copies in deleted or rejected versions are
+  // retired and don't count, except that a copy once found to be malware makes this one malware too.
+  const copies = await ctx.env.DB.prepare(
+    `SELECT f.verdict, f.retired, v.version_number, v.project_id, p.name, p.slug FROM files f JOIN versions v ON v.id = f.version_id JOIN projects p ON p.id = v.project_id
+     WHERE f.sha512 = ? AND f.id != ? ORDER BY f.verdict = 'malicious' DESC, f.retired LIMIT 20`,
   )
     .bind(sha512, c.file_id)
-    .first<{ name: string; slug: string }>();
+    .all<{ verdict: string | null; retired: number; version_number: string; project_id: string; name: string; slug: string }>();
+  const knownBad = copies.results.find((x) => x.verdict === 'malicious');
+  const duplicate = knownBad ?? copies.results.find((x) => !x.retired);
+  if (knownBad) findings.unshift({ rule: 'duplicate.known_malware', severity: 'critical', detail: `Same file as ${knownBad.name} ${knownBad.version_number}, which was rejected as malware` });
   if (duplicate) {
     await ctx.env.DB.batch([
       finish('done'),
       ctx.env.DB.prepare('UPDATE files SET scanned_at = ?, verdict = ?, findings = ?, capabilities = ?, engines = ? WHERE id = ?').bind(
         now,
-        verdict,
+        knownBad ? 'malicious' : verdict,
         JSON.stringify(findings),
         JSON.stringify(capabilities),
         JSON.stringify(engines),
         c.file_id,
       ),
-      ctx.env.DB.prepare("UPDATE versions SET status = 'rejected', status_reason = ? WHERE id = ? AND status = 'scanning'").bind(
-        `${c.filename} is already published on ${SITE.name} (${duplicate.name}).`,
+      ctx.env.DB.prepare("UPDATE versions SET status = 'rejected', status_reason = ?, review_detail = ? WHERE id = ? AND status = 'scanning'").bind(
+        knownBad
+          ? `Our checks found malware in ${c.filename}.`
+          : duplicate.project_id === c.project_id
+            ? `${c.filename} is the same file as version ${duplicate.version_number} of this project.`
+            : `${c.filename} is already published on ${SITE.name} (${duplicate.name}).`,
+        knownBad ? `Same file as ${knownBad.name} ${knownBad.version_number} (/project/${knownBad.slug}), which was rejected as malware.` : `Same file as ${duplicate.name} ${duplicate.version_number} (/project/${duplicate.slug}).`,
         c.version_id,
       ),
-      audit(ctx.env, null, 'scan.duplicate', 'version', c.version_id, { of: duplicate.slug, file: c.file_id }),
+      audit(ctx.env, null, knownBad ? 'scan.known_malware' : 'scan.duplicate', 'version', c.version_id, { of: duplicate.slug, file: c.file_id }),
     ]);
     return json({ ok: true, status: 'rejected' });
   }
