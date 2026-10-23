@@ -84,7 +84,7 @@ function reasonsOf(v: Version): { tone: Tone; text: string }[] {
     m = /^Flagged by the scanner: (.*)$/.exec(p);
     if (m) return { tone: 'warning', text: t('Scanner: {detail}', { detail: m[1] }) };
     if (/malware|malicious|caught it/i.test(p)) return { tone: 'danger', text: p };
-    return { tone: /^(New native|Native library changed|New links|Has more links|Also published on Modrinth)/.test(p) ? 'warning' : 'info', text: p };
+    return { tone: /^(New native|Native library changed|New links|Has more links)/.test(p) ? 'warning' : 'info', text: p };
   });
 }
 

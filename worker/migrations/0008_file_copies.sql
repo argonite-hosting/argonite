@@ -17,7 +17,3 @@ WHEN NEW.status NOT IN ('deleted', 'rejected') AND OLD.status IN ('deleted', 're
 BEGIN
   UPDATE files SET retired = 0 WHERE version_id = NEW.id;
 END;
-
--- The Modrinth project a file is also published under, when there is one. Once a moderator approves
--- a version, later versions matching the same Modrinth project don't need another look for it.
-ALTER TABLE files ADD COLUMN modrinth_project TEXT;
