@@ -249,7 +249,7 @@ export function summaryOf(os: SandboxOs, r: SandboxReport): SandboxSummary {
   return {
     os,
     outcome: r.outcome,
-    note: r.outcome === 'tested' ? null : r.error,
+    note: r.error,
     gameVersion: r.env.gameVersion,
     loader: r.env.loader,
     server: r.server.started,
