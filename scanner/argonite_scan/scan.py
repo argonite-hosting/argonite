@@ -103,7 +103,7 @@ def scan_bytes(
         "findings": findings,
         "capabilities": sorted(report.capabilities),
         "engines": used,
-        "metadata": {**meta, "classes": report.class_count, "entries": len(walked.entries), "natives": report.natives, "hosts": rules.hosts_of(report)},
+        "metadata": {**meta, "classes": report.class_count, "entries": len(walked.entries), "natives": report.natives, "hosts": rules.hosts_of(report), "links": sorted(report.links)[: rules.MAX_LINKS], "links_complete": len(report.links) < rules.MAX_LINKS},
         "contents": contents,
     }
 

@@ -5,8 +5,8 @@ import { newId } from '../lib/crypto';
 import { assetDownloadUrl, projectRepo } from '../lib/app';
 import { PROJECT_SELECT, loadVersions, recomputeProject, toSummary, type ProjectRow } from '../lib/db';
 import { goLive } from '../lib/publish';
-import { assertSameSite, audit, rateLimit } from '../lib/guard';
-import { badRequest, conflict, json, notFound, readJson } from '../lib/http';
+import { assertSameSite, audit, projectAccess, rateLimit } from '../lib/guard';
+import { badRequest, conflict, forbidden, json, notFound, readJson } from '../lib/http';
 import { oneOf, str } from '../lib/input';
 import type { Ctx, Router } from '../lib/router';
 import { requireActiveUser, requireAdmin, requireModerator } from '../lib/session';
@@ -78,6 +78,12 @@ async function decide(ctx: Ctx): Promise<Response> {
     restore: ['revoked', 'rejected', 'unavailable'],
   };
   if (!allowed[action].includes(v.status)) throw conflict(`Cannot ${action} a version that is ${v.status}.`);
+  // Nobody signs off their own work: moderators can't approve or restore versions of projects they're
+  // part of. Admins can, so a site with a single admin still works.
+  if ((action === 'approve' || action === 'restore') && mod.role !== 'admin') {
+    const own = v.author_id === mod.id || (await projectAccess(ctx.env, v.project_id, mod)).role !== null;
+    if (own) throw forbidden('Another moderator has to review versions of projects you’re part of.');
+  }
   if ((action === 'approve' || action === 'restore') && (!v.files || v.verified !== v.files)) throw conflict('Not every file in this version has a verified fingerprint, so it cannot go live.');
   if ((action === 'reject' || action === 'revoke') && reason.length < 3) throw badRequest('Give a reason; the author will see it.', { reason: 'Required.' });
 

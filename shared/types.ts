@@ -136,6 +136,8 @@ export interface Finding {
   severity: 'info' | 'low' | 'medium' | 'high' | 'critical';
   detail: string;
   path?: string;
+  // The class the finding was made in, for findings that only carry over to identical code.
+  sha256?: string;
 }
 
 export interface ScanSummary {

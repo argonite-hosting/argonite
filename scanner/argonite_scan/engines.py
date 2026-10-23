@@ -102,7 +102,8 @@ def check_links(links: dict[str, str], report: Report, hosts: list[str]) -> bool
     if not links:
         return False
 
-    def resolver(host: str) -> bool:
+    def resolver(host: str) -> bool | None:
+        """True when listed, False when not, None when the lookup failed."""
         if host in SHARED_HOSTS or host.replace(".", "").isdigit():
             return False
         url = "https://security.cloudflare-dns.com/dns-query?" + urllib.parse.urlencode({"name": host, "type": "A"})
@@ -111,7 +112,7 @@ def check_links(links: dict[str, str], report: Report, hosts: list[str]) -> bool
             with urllib.request.urlopen(req, timeout=5) as res:
                 answers = json.loads(res.read().decode()).get("Answer") or []
         except (urllib.error.URLError, ValueError, TimeoutError):
-            return False
+            return None
         return any(a.get("type") == 1 and a.get("data") == "0.0.0.0" for a in answers)
 
     key = os.environ.get("URLHAUS_KEY") or os.environ.get("MALWAREBAZAAR_KEY")
@@ -123,17 +124,23 @@ def check_links(links: dict[str, str], report: Report, hosts: list[str]) -> bool
             return False
         return data.get("query_status") == "ok" and data.get("url_status") in ("online", "unknown")
 
-    first_seen = {}
+    from .rules import link_host
+
+    first_seen: dict[str, str] = {}
     for url, where in links.items():
-        from .rules import link_host
         first_seen.setdefault(link_host(url), where)
     with ThreadPoolExecutor(max_workers=16) as pool:
-        flagged = [h for h, bad in zip(hosts, pool.map(resolver, hosts)) if bad]
-        for host in flagged:
-            report.add("link.malicious_host", "high", f"Links to {host}, which is on a malware or phishing list", first_seen.get(host))
+        verdicts = list(pool.map(resolver, hosts))
+        for host, bad in zip(hosts, verdicts):
+            if bad is True:
+                report.add("link.malicious_host", "high", f"Links to {host}, which is on a malware or phishing list", first_seen.get(host))
+        failed = sum(1 for v in verdicts if v is None)
+        if failed:
+            report.add("link.unchecked", "medium", f"{failed} website(s) linked from this file couldn't be checked against the malware lists")
         if key:
-            urls = list(links)[:100]
-            for url, bad in zip(urls, pool.map(urlhaus, urls)):
+            # Shared hosts (GitHub, CDNs) can't be judged by their domain, so their exact URLs go first.
+            ordered = sorted(links, key=lambda u: link_host(u) not in SHARED_HOSTS)[:300]
+            for url, bad in zip(ordered, pool.map(urlhaus, ordered)):
                 if bad:
                     report.add("link.malicious_url", "critical", f"Links to a URL listed on URLhaus as serving malware ({url[:120]})", links[url])
     return True

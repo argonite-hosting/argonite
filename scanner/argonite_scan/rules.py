@@ -113,7 +113,7 @@ MIXIN = "Lorg/spongepowered/asm/mixin/Mixin;"
 URL_IN_CODE = re.compile(r"(?i)\bhttps?:[/\\]+[a-z0-9.-]+\.[a-z]{2,}(?::\d+)?[^\s\"'<>`]*")
 # XML and schema namespaces that libraries carry but never fetch.
 NAMESPACE_HOSTS = {"www.w3.org", "w3.org", "xml.org", "www.xml.org", "java.sun.com", "xmlpull.org", "xml.apache.org", "www.apache.org", "apache.org", "json-schema.org", "purl.org", "ns.adobe.com", "schemas.microsoft.com", "www.oracle.com", "javafx.com"}
-MAX_LINKS = 400
+MAX_LINKS = 5000
 
 # Ways to find the user's home or system folders, which lie outside the game folder.
 OUTSIDE_MEMBERS = {"java/lang/System.getenv", "java/lang/System.getProperty"}
@@ -186,12 +186,19 @@ class Report:
     # Links found in code and config files, first place each was seen.
     links: dict[str, str] = field(default_factory=dict)
 
-    def add(self, rule: str, severity: str, detail: str, path: str | None = None) -> None:
-        if len(self.findings) >= 200:
+    def add(self, rule: str, severity: str, detail: str, path: str | None = None, sha256: str | None = None) -> None:
+        # Padding a file with harmless findings must never push a serious one out, so the cap only
+        # applies to low-severity notes.
+        serious = severity in ("high", "critical")
+        if len(self.findings) >= (5000 if serious else 200):
             return
         if any(f["rule"] == rule and f.get("path") == path for f in self.findings):
             return
         entry = {"rule": rule, "severity": severity, "detail": detail}
+        if sha256:
+            # The exact class this was found in. An approved finding only carries over to a later version
+            # if this class is byte-identical there.
+            entry["sha256"] = sha256
         if path:
             entry["path"] = path[:300]
         self.findings.append(entry)
@@ -224,6 +231,14 @@ def _scan_text(data: bytes, path: str, report: Report, ioc_strings: list[str]) -
         if ioc in text:
             report.add("ioc.string", "critical", f"Contains a known malware indicator ({ioc})", path)
     _collect_links(raw, path, report)
+
+
+def _looks_like_text(data: bytes) -> bool:
+    sample = data[:4096]
+    if not sample or b"\x00" in sample:
+        return False
+    printable = sum(1 for b in sample if b in (9, 10, 13) or 32 <= b < 127 or b >= 128)
+    return printable / len(sample) > 0.95
 
 
 def _collect_links(text: str, path: str, report: Report) -> None:
@@ -304,11 +319,14 @@ def analyse(walked: WalkResult, project_type: str, iocs: dict[str, list[str]]) -
             except classfile.ClassFormatError:
                 report.add("class.malformed", "medium", "A .class file could not be parsed", entry.path)
                 continue
-            _check_class(info, entry.path, report, ioc_strings, ioc_classes)
+            _check_class(info, entry.path, report, ioc_strings, ioc_classes, hashlib.sha256(entry.data).hexdigest())
             if SHORT_NAME.match(info.name or ""):
                 short_names += 1
         elif leaf.endswith(TEXT_SUFFIXES):
             _scan_text(entry.data, entry.path, report, ioc_strings)
+        elif kind is None and not leaf.endswith((".jar", ".zip", ".png", ".jpg", ".jpeg", ".gif", ".webp", ".ogg", ".wav", ".nbt", ".mca")) and len(entry.data) <= 2 * 1024 * 1024 and _looks_like_text(entry.data):
+            # Links hide in files with any extension (.dat, .bin, no extension at all).
+            _collect_links(entry.data.decode("utf-8", "replace"), entry.path, report)
         if lower.endswith(TRANSFORMER_FILES):
             _transformer(report, entry.path)
 
@@ -344,16 +362,16 @@ def _transformer(report: Report, path: str) -> None:
     report.add("class.transformer", "medium", "Rewrites other classes' bytecode as the game loads (a coremod or transformer)", path)
 
 
-def _session(report: Report, path: str, how: str) -> None:
+def _session(report: Report, path: str, how: str, digest: str | None) -> None:
     report.capabilities.add("session_token")
-    report.add("class.session_token", "high", f"{how} the player's session token, which lets whoever holds it log in as them", path)
+    report.add("class.session_token", "high", f"{how} the player's session token, which lets whoever holds it log in as them", path, digest)
 
 
-def _check_bytecode_access(info: classfile.ClassInfo, path: str, report: Report) -> None:
+def _check_bytecode_access(info: classfile.ClassInfo, path: str, report: Report, digest: str | None = None) -> None:
     if info.members & SESSION_MEMBERS:
-        _session(report, path, "Reads")
+        _session(report, path, "Reads", digest)
     elif any(s in SESSION_STRINGS for s in info.strings):
-        _session(report, path, "Looks up (by name)")
+        _session(report, path, "Looks up (by name)", digest)
 
     if info.classes & TRANSFORMER_CLASSES or any(c.startswith(TRANSFORMER_PREFIXES) for c in info.classes) or set(info.interfaces) & TRANSFORMER_CLASSES:
         _transformer(report, path)
@@ -364,14 +382,14 @@ def _check_bytecode_access(info: classfile.ClassInfo, path: str, report: Report)
     targets = {t.replace(".", "/") for t in mixin.get("value", []) + mixin.get("targets", [])}
     for target in sorted(targets):
         if target in SESSION_CLASSES or target.startswith(SESSION_PREFIXES):
-            _session(report, path, f"A mixin into {target} can reach")
+            _session(report, path, f"A mixin into {target} can reach", digest)
         elif target.startswith(LOADER_PREFIXES):
             report.capabilities.add("patches_loader")
-            report.add("mixin.loader_target", "high", f"A mixin patches the mod loader, Mixin or Java itself ({target})", path)
+            report.add("mixin.loader_target", "high", f"A mixin patches the mod loader, Mixin or Java itself ({target})", path, digest)
 
 
-def _check_class(info: classfile.ClassInfo, path: str, report: Report, ioc_strings: list[str], ioc_classes: set[str]) -> None:
-    _check_bytecode_access(info, path, report)
+def _check_class(info: classfile.ClassInfo, path: str, report: Report, ioc_strings: list[str], ioc_classes: set[str], digest: str | None = None) -> None:
+    _check_bytecode_access(info, path, report, digest)
     for cap, members in CAPABILITY_MEMBERS.items():
         if any(m in info.members for m in members):
             report.capabilities.add(cap)
@@ -390,12 +408,12 @@ def _check_class(info: classfile.ClassInfo, path: str, report: Report, ioc_strin
             if ioc in text:
                 report.add("ioc.string", "critical", f"Contains a known malware indicator ({ioc})", path)
         if any(p in text for p in SENSITIVE_PATHS):
-            report.add("strings.credential_paths", "high", "References browser, Discord, wallet or launcher credential files", path)
+            report.add("strings.credential_paths", "high", "References browser, Discord, wallet or launcher credential files", path, digest)
             report.capabilities.add("credential_access")
         if any(p in text for p in PERSISTENCE):
-            report.add("strings.persistence", "high", "References OS start-up or persistence locations", path)
+            report.add("strings.persistence", "high", "References OS start-up or persistence locations", path, digest)
         if SHADY_HOSTS.search(raw):
-            report.add("strings.exfil_host", "high", "Contains a webhook, paste or tunnel URL often used to exfiltrate data", path)
+            report.add("strings.exfil_host", "high", "Contains a webhook, paste or tunnel URL often used to exfiltrate data", path, digest)
         if RAW_IP_URL.search(raw):
             report.add("strings.raw_ip", "medium", "Contains a URL pointing at a bare IP address", path)
     for s in info.strings:
