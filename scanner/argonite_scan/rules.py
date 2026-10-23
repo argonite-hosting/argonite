@@ -70,6 +70,45 @@ CAPABILITY_CLASSES = {
     "dynamic_classloading": ["java/net/URLClassLoader"],
 }
 
+# The player's session token logs in as them, so it's what Minecraft token stealers are after. These are
+# the token getters under every mapping mods ship with: Mojang names (NeoForge, recent Forge), Fabric's
+# intermediary names, and the old MCP names (Forge 1.12 and earlier).
+SESSION_MEMBERS = {
+    "net/minecraft/client/User.getAccessToken",
+    "net/minecraft/client/User.getSessionId",
+    "net/minecraft/class_320.method_1674",
+    "net/minecraft/class_320.method_1675",
+    "net/minecraft/util/Session.func_148254_d",
+    "net/minecraft/util/Session.func_111286_b",
+    "net/minecraft/util/Session.getToken",
+    "net/minecraft/util/Session.getSessionID",
+}
+# The obfuscated names as plain strings, which is how reflection reaches them. Readable names like
+# getAccessToken also appear in ordinary HTTP and OAuth libraries, so they are left out here.
+SESSION_STRINGS = {"method_1674", "method_1675", "func_148254_d", "func_111286_b"}
+# Classes holding the session or login, as Mixin targets.
+SESSION_CLASSES = {"net/minecraft/client/User", "net/minecraft/class_320", "net/minecraft/util/Session"}
+SESSION_PREFIXES = ("com/mojang/authlib/",)
+
+# Ways a mod transforms other classes' bytecode as the game loads, outside Mixin.
+TRANSFORMER_CLASSES = {
+    "net/minecraft/launchwrapper/IClassTransformer",
+    "net/minecraftforge/fml/relauncher/IFMLLoadingPlugin",
+    "cpw/mods/modlauncher/api/ITransformationService",
+    "cpw/mods/modlauncher/api/ITransformer",
+    "com/chocohead/mm/api/ClassTinkerers",
+}
+TRANSFORMER_PREFIXES = ("net/minecraftforge/coremod/", "net/neoforged/coremod/", "net/neoforged/neoforgespi/transformation/")
+TRANSFORMER_FILES = ("meta-inf/coremods.json", "meta-inf/services/cpw.mods.modlauncher.api.itransformationservice")
+TRANSFORMER_MANIFEST = ("fmlcoreplugin", "tweakclass")
+
+# Mixin targets that patch the mod loader, the Mixin library or Java itself rather than the game.
+LOADER_PREFIXES = (
+    "net/fabricmc/loader/", "org/quiltmc/loader/", "cpw/mods/", "net/minecraftforge/fml/", "net/neoforged/fml/",
+    "org/spongepowered/asm/", "java/", "javax/", "jdk/", "sun/",
+)
+MIXIN = "Lorg/spongepowered/asm/mixin/Mixin;"
+
 SENSITIVE_PATHS = [
     "local storage/leveldb",
     "launcher_accounts.json",
@@ -234,11 +273,15 @@ def analyse(walked: WalkResult, project_type: str, iocs: dict[str, list[str]]) -
                 short_names += 1
         elif leaf.endswith(TEXT_SUFFIXES):
             _scan_text(entry.data, entry.path, report, ioc_strings)
+        if lower.endswith(TRANSFORMER_FILES):
+            _transformer(report, entry.path)
 
     if report.class_count >= 20 and short_names / report.class_count > 0.6:
         report.add("class.obfuscated", "medium", "Most class names are one or two characters long (heavily obfuscated)")
 
     manifest = {k.lower(): v for k, v in walked.manifest.items()}
+    if any(key in manifest for key in TRANSFORMER_MANIFEST):
+        _transformer(report, "META-INF/MANIFEST.MF")
     for key in ("premain-class", "agent-class", "launcher-agent-class"):
         if key in manifest:
             report.capabilities.add("instrumentation")
@@ -258,7 +301,39 @@ def analyse(walked: WalkResult, project_type: str, iocs: dict[str, list[str]]) -
     return report
 
 
+def _transformer(report: Report, path: str) -> None:
+    report.capabilities.add("class_transformer")
+    report.add("class.transformer", "medium", "Rewrites other classes' bytecode as the game loads (a coremod or transformer)", path)
+
+
+def _session(report: Report, path: str, how: str) -> None:
+    report.capabilities.add("session_token")
+    report.add("class.session_token", "high", f"{how} the player's session token, which lets whoever holds it log in as them", path)
+
+
+def _check_bytecode_access(info: classfile.ClassInfo, path: str, report: Report) -> None:
+    if info.members & SESSION_MEMBERS:
+        _session(report, path, "Reads")
+    elif any(s in SESSION_STRINGS for s in info.strings):
+        _session(report, path, "Looks up (by name)")
+
+    if info.classes & TRANSFORMER_CLASSES or any(c.startswith(TRANSFORMER_PREFIXES) for c in info.classes) or set(info.interfaces) & TRANSFORMER_CLASSES:
+        _transformer(report, path)
+
+    mixin = info.annotations.get(MIXIN)
+    if mixin is None:
+        return
+    targets = {t.replace(".", "/") for t in mixin.get("value", []) + mixin.get("targets", [])}
+    for target in sorted(targets):
+        if target in SESSION_CLASSES or target.startswith(SESSION_PREFIXES):
+            _session(report, path, f"A mixin into {target} can reach")
+        elif target.startswith(LOADER_PREFIXES):
+            report.capabilities.add("patches_loader")
+            report.add("mixin.loader_target", "high", f"A mixin patches the mod loader, Mixin or Java itself ({target})", path)
+
+
 def _check_class(info: classfile.ClassInfo, path: str, report: Report, ioc_strings: list[str], ioc_classes: set[str]) -> None:
+    _check_bytecode_access(info, path, report)
     for cap, members in CAPABILITY_MEMBERS.items():
         if any(m in info.members for m in members):
             report.capabilities.add(cap)

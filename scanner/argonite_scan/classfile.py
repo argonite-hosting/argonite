@@ -1,4 +1,4 @@
-"""Just enough of the JVM class format to pull references and string constants out of the constant pool."""
+"""Just enough of the JVM class format to pull references, string constants and class-level annotations out."""
 
 from __future__ import annotations
 
@@ -13,6 +13,10 @@ class ClassInfo:
     members: set[str] = field(default_factory=set)
     strings: list[str] = field(default_factory=list)
     utf8: list[str] = field(default_factory=list)
+    interfaces: list[str] = field(default_factory=list)
+    # Class-level annotations: type descriptor -> element name -> values. Class values are given as
+    # internal names (a/b/C), strings and enum constants as written.
+    annotations: dict[str, dict[str, list[str]]] = field(default_factory=dict)
 
 
 class ClassFormatError(Exception):
@@ -56,6 +60,7 @@ def parse(data: bytes) -> ClassInfo:
                 raise ClassFormatError(f"bad constant tag {tag}")
             i += 1
         this_class = struct.unpack_from(">H", data, pos + 2)[0]
+        rest = pos + 6
     except (IndexError, struct.error) as exc:
         raise ClassFormatError("truncated class file") from exc
 
@@ -84,4 +89,89 @@ def parse(data: bytes) -> ClassInfo:
             if nat and nat[0] == 12:
                 info.members.add(f"{owner}.{utf(nat[1])}")
     info.name = class_name(this_class)
+    try:
+        _read_body(data, rest, utf, class_name, info)
+    except (IndexError, struct.error, RecursionError):
+        # The constant pool is what the rules mostly need; a damaged tail only loses annotations.
+        pass
     return info
+
+
+ANNOTATION_ATTRS = ("RuntimeVisibleAnnotations", "RuntimeInvisibleAnnotations")
+
+
+def _read_body(data: bytes, pos: int, utf, class_name, info: ClassInfo) -> None:
+    (count,) = struct.unpack_from(">H", data, pos)
+    pos += 2
+    for _ in range(count):
+        info.interfaces.append(class_name(struct.unpack_from(">H", data, pos)[0]))
+        pos += 2
+    for _ in range(2):  # fields, then methods
+        (members,) = struct.unpack_from(">H", data, pos)
+        pos += 2
+        for _ in range(members):
+            pos += 6
+            (attrs,) = struct.unpack_from(">H", data, pos)
+            pos += 2
+            for _ in range(attrs):
+                pos += 2
+                (length,) = struct.unpack_from(">I", data, pos)
+                pos += 4 + length
+    (attrs,) = struct.unpack_from(">H", data, pos)
+    pos += 2
+    for _ in range(attrs):
+        name_index, length = struct.unpack_from(">HI", data, pos)
+        pos += 6
+        if utf(name_index) in ANNOTATION_ATTRS:
+            _read_annotations(data, pos, utf, info)
+        pos += length
+
+
+def _read_annotations(data: bytes, pos: int, utf, info: ClassInfo) -> None:
+    (count,) = struct.unpack_from(">H", data, pos)
+    pos += 2
+    for _ in range(count):
+        kind = utf(struct.unpack_from(">H", data, pos)[0])
+        pos, elements = _annotation_body(data, pos + 2, utf, 0)
+        info.annotations.setdefault(kind, {}).update(elements)
+
+
+def _annotation_body(data: bytes, pos: int, utf, depth: int) -> tuple[int, dict[str, list[str]]]:
+    if depth > 8:
+        raise RecursionError("annotations nested too deep")
+    (pairs,) = struct.unpack_from(">H", data, pos)
+    pos += 2
+    elements: dict[str, list[str]] = {}
+    for _ in range(pairs):
+        name = utf(struct.unpack_from(">H", data, pos)[0])
+        values: list[str] = []
+        pos = _element_value(data, pos + 2, utf, values, depth)
+        elements[name] = values
+    return pos, elements
+
+
+def _element_value(data: bytes, pos: int, utf, out: list[str], depth: int) -> int:
+    tag = chr(data[pos])
+    pos += 1
+    if tag in "BCDFIJSZ":
+        return pos + 2
+    if tag == "s":
+        out.append(utf(struct.unpack_from(">H", data, pos)[0]))
+        return pos + 2
+    if tag == "c":
+        desc = utf(struct.unpack_from(">H", data, pos)[0])
+        out.append(desc[1:-1] if desc.startswith("L") and desc.endswith(";") else desc)
+        return pos + 2
+    if tag == "e":
+        out.append(utf(struct.unpack_from(">H", data, pos + 2)[0]))
+        return pos + 4
+    if tag == "@":
+        pos, _ = _annotation_body(data, pos + 2, utf, depth + 1)
+        return pos
+    if tag == "[":
+        (count,) = struct.unpack_from(">H", data, pos)
+        pos += 2
+        for _ in range(count):
+            pos = _element_value(data, pos, utf, out, depth + 1)
+        return pos
+    raise IndexError(f"bad element tag {tag!r}")

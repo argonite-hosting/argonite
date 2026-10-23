@@ -16,7 +16,7 @@ const STALE_CLAIM_MS = 30 * 60 * 1000;
 export const MAX_ATTEMPTS = 3;
 const SEVERITIES = new Set(['info', 'low', 'medium', 'high', 'critical']);
 // Network access and plain encryption are everywhere in honest mods, so they're recorded but never force a review on their own.
-const RISKY_CAPABILITIES = new Set(['process_exec', 'native_code', 'dynamic_classloading', 'instrumentation', 'credential_access', 'jar_writing']);
+const RISKY_CAPABILITIES = new Set(['process_exec', 'native_code', 'dynamic_classloading', 'instrumentation', 'credential_access', 'jar_writing', 'session_token', 'class_transformer', 'patches_loader']);
 const MAX_CONTENTS_BYTES = 400_000;
 
 async function authenticate(ctx: Ctx): Promise<Record<string, unknown>> {
