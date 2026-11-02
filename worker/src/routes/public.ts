@@ -22,7 +22,11 @@ async function cached(ctx: Ctx, ttlSeconds: number, build: () => Promise<Respons
   const cache = caches.default;
   const key = new Request(ctx.url.toString(), { method: 'GET' });
   const hit = await cache.match(key);
-  if (hit) return hit;
+  if (hit) {
+    const out = new Response(hit.body, hit);
+    out.headers.set('Cache-Control', `public, max-age=${ttlSeconds}`);
+    return out;
+  }
   const res = await build();
   if (res.status === 200) {
     res.headers.set('Cache-Control', `public, max-age=${ttlSeconds}`);
