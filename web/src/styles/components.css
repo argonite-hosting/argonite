@@ -1090,3 +1090,16 @@ button.chip:hover {
   color: var(--text-3);
   font-size: var(--fs-sm);
 }
+.copy-field-compact {
+  display: inline-flex;
+  gap: 2px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+.copy-field-compact code {
+  flex: none;
+  font-size: var(--fs-sm);
+  color: var(--text);
+  letter-spacing: 0.02em;
+}

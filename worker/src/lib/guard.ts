@@ -1,7 +1,7 @@
 import { PERM_ALL, has } from '../../../shared/permissions';
 import type { Env } from '../env';
 import { newId } from './crypto';
-import { projectKeyColumn } from './db';
+import { projectRef, projectRefBinds } from './db';
 import { HttpError, badRequest, clientIp, forbidden, isSiteOrigin, notFound } from './http';
 import type { Ctx } from './router';
 import type { SessionUser } from './session';
@@ -68,17 +68,17 @@ interface AccessRow extends Omit<ProjectAccess, 'role' | 'perms'> {
 
 // Effective permissions: the project owner and organisation owners can do everything; everyone else
 // gets the union of their project row and their organisation row.
-export async function projectAccess(env: Env, idOrSlug: string, user: SessionUser | null): Promise<ProjectAccess> {
-  const key = idOrSlug.toLowerCase();
+export async function projectAccess(env: Env, reference: string, user: SessionUser | null): Promise<ProjectAccess> {
+  const [key, publicId] = projectRefBinds(reference);
   const row = await env.DB.prepare(
     `SELECT p.id, p.slug, p.name, p.type, p.status, p.owner_id, p.org_id, p.repo_id, p.repo_full_name, p.repo_status, p.installation_id, p.archived,
             m.role AS member_role, m.permissions AS member_perms, om.role AS org_role, om.permissions AS org_perms
      FROM projects p
      LEFT JOIN members m ON m.project_id = p.id AND m.user_id = ?2 AND m.accepted = 1
      LEFT JOIN org_members om ON om.org_id = p.org_id AND om.user_id = ?2 AND om.accepted = 1
-     WHERE p.${projectKeyColumn(key)} = ?1`,
+     WHERE p.id = ${projectRef('?1', '?3')}`,
   )
-    .bind(key, user?.id ?? '')
+    .bind(key, user?.id ?? '', publicId)
     .first<AccessRow>();
   if (!row || row.status === 'removed') throw notFound('Project not found.');
   const isOwner = !!user && row.owner_id === user.id;

@@ -375,7 +375,7 @@ export function Pagination({ page, pages, onPage }: { page: number; pages: numbe
   );
 }
 
-export function CopyField({ value, label }: { value: string; label: string }) {
+export function CopyField({ value, label, compact = false }: { value: string; label: string; compact?: boolean }) {
   const copy = async () => {
     try {
       await navigator.clipboard.writeText(value);
@@ -385,7 +385,7 @@ export function CopyField({ value, label }: { value: string; label: string }) {
     }
   };
   return (
-    <div class="copy-field">
+    <div class={compact ? 'copy-field copy-field-compact' : 'copy-field'}>
       <code title={value}>{value}</code>
       <button class="btn btn-ghost btn-sm btn-icon" type="button" onClick={copy} aria-label={t('Copy {what}', { what: label })}>
         <Icon name="copy" />

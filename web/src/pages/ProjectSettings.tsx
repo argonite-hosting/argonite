@@ -9,7 +9,7 @@ import { Icon } from '../components/Icon';
 import { MarkdownEditor } from '../components/Markdown';
 import { Analytics, ModThread, ProjectPermissionPicker, Publishing } from '../components/ProjectPanels';
 import { RequireAuth } from '../components/RequireAuth';
-import { Alert, Avatar, ChannelBadge, Empty, Field, Modal, PageLoading, ProjectIcon, Spinner, StatusBadge, HostList, SandboxList, NativeList, Tabs, useAsync, VerifiedImg } from '../components/ui';
+import { Alert, Avatar, ChannelBadge, CopyField, Empty, Field, Modal, PageLoading, ProjectIcon, Spinner, StatusBadge, HostList, SandboxList, NativeList, Tabs, useAsync, VerifiedImg } from '../components/ui';
 import { SITE } from '../config';
 import { ApiError, api, upload } from '../lib/api';
 import { date } from '../lib/format';
@@ -98,7 +98,7 @@ function General({ m, reload }: { m: Manage; reload: () => void }) {
           <Field label={t('Summary')} hint={`${summary.length}/200`} error={err.summary}>
             {(id, d) => <textarea id={id} class="textarea" rows={2} maxLength={200} value={summary} aria-describedby={d} onInput={(e) => setSummary(e.currentTarget.value)} />}
           </Field>
-          <Field label="URL" hint={owner ? t('Changing this breaks old links.') : t('Only the owner can change this.')} error={err.slug}>
+          <Field label="URL" hint={owner ? t('Old links keep working until another project takes this URL.') : t('Only the owner can change this.')} error={err.slug}>
             {(id, d) => (
               <div class="input-group">
                 <span class="input-prefix">{SITE.domain}/project/</span>
@@ -106,6 +106,13 @@ function General({ m, reload }: { m: Manage; reload: () => void }) {
               </div>
             )}
           </Field>
+          {p.publicId && (
+            <div class="field">
+              <span class="field-label">{t('Project ID')}</span>
+              <CopyField value={p.publicId} label={t('Project ID')} />
+              <span class="field-hint">{t('It never changes. It works in place of the URL anywhere, including the API and publishing.')}</span>
+            </div>
+          )}
           <div class="field">
             <span class="field-label">
               {t('Categories')} <span class="optional">{t('Up to 5')}</span>

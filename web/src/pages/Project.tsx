@@ -380,6 +380,14 @@ function Sidebar({ project, versions }: { project: Project; versions: Version[] 
       <section class="card card-body">
         <h2 class="panel-title">{t('Details')}</h2>
         <dl class="kv">
+          {project.publicId && (
+            <>
+              <dt>{t('Project ID')}</dt>
+              <dd>
+                <CopyField value={project.publicId} label={t('Project ID')} compact />
+              </dd>
+            </>
+          )}
           <dt>{t('License')}</dt>
           <dd>
             {licenseHref ? (

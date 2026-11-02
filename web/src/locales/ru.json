@@ -112,7 +112,6 @@
   "Change member permissions": "Изменять права участников",
   "Change theme": "Сменить тему",
   "Changelog": "Изменения",
-  "Changing this breaks old links.": "Изменение сломает старые ссылки.",
   "Check now": "Проверить сейчас",
   "Check the scanner’s signature": "Проверка подписи сканера",
   "Check your dashboard for details.": "Подробности в вашей панели.",
@@ -856,7 +855,6 @@
   "Settings for {name}": "Настройки: {name}",
   "Settings · {name}": "Настройки · {name}",
   "Settings → API tokens": "Настройки → API-токены",
-  "Several projects at once (up to 100 ids).": "Несколько проектов сразу (до 100 id).",
   "Several versions at once (up to 80 ids).": "Несколько версий сразу (до 80 id).",
   "Shader": "Шейдер",
   "Shaders": "Шейдеры",
@@ -1239,5 +1237,11 @@
   },
   "Every file is fetched through a short-lived private link and scanned for malware, including every jar packed inside it. When something looks off, moderators can also try a mod, plugin or modpack out in an isolated environment. Resource packs, data packs and shaders are rejected outright if they contain any code.": "Каждый файл загружается по кратковременной закрытой ссылке и проверяется на вредоносный код, включая каждый вложенный jar. Если что-то вызывает подозрения, модераторы могут также запустить мод, плагин или сборку в изолированной среде. Наборы ресурсов, наборы данных и шейдеры сразу отклоняются, если содержат код.",
   "Filter": "Фильтр",
-  "No matches": "Ничего не найдено"
+  "No matches": "Ничего не найдено",
+  "Project ID": "ID проекта",
+  "Project IDs": "ID проектов",
+  "Old links keep working until another project takes this URL.": "Старые ссылки работают, пока этот адрес не займёт другой проект.",
+  "It never changes. It works in place of the URL anywhere, including the API and publishing.": "Он никогда не меняется и работает вместо адреса везде, включая API и публикацию.",
+  "Several projects at once (up to 100 ids or project IDs).": "Несколько проектов сразу (до 100 id или ID проектов).",
+  "Every project has a permanent 8-character ID made of letters and digits, shown on its page. It never changes, even when the project’s URL does, and it isn’t case-sensitive. Use it anywhere a path takes {id|slug}, and to publish from CI. A URL a project used to have keeps working until another project takes it, so for anything you store, keep the ID.": "У каждого проекта есть постоянный ID из 8 букв и цифр, он показан на странице проекта. Он не меняется, даже когда меняется адрес проекта, и не зависит от регистра. Используйте его везде, где путь принимает {id|slug}, и для публикации из CI. Прежний адрес проекта работает, пока его не займёт другой проект, поэтому сохраняйте именно ID."
 }

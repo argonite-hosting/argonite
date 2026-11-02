@@ -4,7 +4,7 @@ import type { AuditEntry, Report, ReviewItem } from '../../../shared/types';
 import { cleanMultiline, cleanText, isId } from '../../../shared/validate';
 import { newId } from '../lib/crypto';
 import { assetDownloadUrl, projectRepo } from '../lib/app';
-import { PROJECT_SELECT, loadVersions, recomputeProject, toSummary, type ProjectRow } from '../lib/db';
+import { PROJECT_SELECT, loadVersions, recomputeProject, restoreSlug, toSummary, type ProjectRow } from '../lib/db';
 import { goLive } from '../lib/publish';
 import { assertSameSite, audit, projectAccess, rateLimit } from '../lib/guard';
 import { badRequest, conflict, forbidden, json, notFound, readJson } from '../lib/http';
@@ -130,6 +130,7 @@ async function projectStatus(ctx: Ctx): Promise<Response> {
     ctx.env.DB.prepare('UPDATE projects SET status = ?, status_reason = ?, updated_at = ? WHERE id = ?').bind(target, reason || null, Date.now(), p.id),
     audit(ctx.env, mod.id, `project.${status}`, 'project', p.id, { reason, from: p.status }),
   ];
+  if (target !== 'removed') stmts.push(...restoreSlug(ctx.env, p.id));
   const resetRepo = body.resetRepo === true && p.repo_status === 'transferred';
   if (resetRepo) stmts.push(ctx.env.DB.prepare("UPDATE projects SET repo_status = 'ok' WHERE id = ?").bind(p.id));
   await ctx.env.DB.batch(stmts);

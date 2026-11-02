@@ -110,7 +110,6 @@
   "Change member permissions": "Mitgliederrechte ändern",
   "Change theme": "Design ändern",
   "Changelog": "Änderungen",
-  "Changing this breaks old links.": "Eine Änderung macht alte Links ungültig.",
   "Check now": "Jetzt prüfen",
   "Check the scanner’s signature": "Signatur des Scanners prüfen",
   "Check your dashboard for details.": "Details findest du in deinem Dashboard.",
@@ -852,7 +851,6 @@
   "Settings for {name}": "Einstellungen für {name}",
   "Settings · {name}": "Einstellungen · {name}",
   "Settings → API tokens": "Einstellungen → API-Tokens",
-  "Several projects at once (up to 100 ids).": "Mehrere Projekte auf einmal (bis zu 100 IDs).",
   "Several versions at once (up to 80 ids).": "Mehrere Versionen auf einmal (bis zu 80 IDs).",
   "Shader": "Shader",
   "Shaders": "Shader",
@@ -1223,5 +1221,11 @@
   },
   "Every file is fetched through a short-lived private link and scanned for malware, including every jar packed inside it. When something looks off, moderators can also try a mod, plugin or modpack out in an isolated environment. Resource packs, data packs and shaders are rejected outright if they contain any code.": "Jede Datei wird über einen kurzlebigen privaten Link abgerufen und auf Malware geprüft, einschließlich jedes darin enthaltenen Jars. Wirkt etwas verdächtig, können Moderatoren einen Mod, ein Plugin oder ein Modpack zusätzlich in einer abgeschotteten Umgebung ausprobieren. Ressourcenpakete, Datenpakete und Shader werden sofort abgelehnt, wenn sie Code enthalten.",
   "Filter": "Filtern",
-  "No matches": "Keine Treffer"
+  "No matches": "Keine Treffer",
+  "Project ID": "Projekt-ID",
+  "Project IDs": "Projekt-IDs",
+  "Old links keep working until another project takes this URL.": "Alte Links funktionieren weiter, bis ein anderes Projekt diese URL übernimmt.",
+  "It never changes. It works in place of the URL anywhere, including the API and publishing.": "Sie ändert sich nie und funktioniert überall anstelle der URL, auch in der API und beim Veröffentlichen.",
+  "Several projects at once (up to 100 ids or project IDs).": "Mehrere Projekte auf einmal (bis zu 100 IDs oder Projekt-IDs).",
+  "Every project has a permanent 8-character ID made of letters and digits, shown on its page. It never changes, even when the project’s URL does, and it isn’t case-sensitive. Use it anywhere a path takes {id|slug}, and to publish from CI. A URL a project used to have keeps working until another project takes it, so for anything you store, keep the ID.": "Jedes Projekt hat eine dauerhafte, 8-stellige ID aus Buchstaben und Ziffern, die auf seiner Seite steht. Sie ändert sich nie, auch wenn sich die URL des Projekts ändert, und Groß- und Kleinschreibung spielt keine Rolle. Nutze sie überall, wo ein Pfad {id|slug} erwartet, und zum Veröffentlichen aus CI. Eine frühere URL eines Projekts funktioniert weiter, bis ein anderes Projekt sie übernimmt – speichere also immer die ID."
 }

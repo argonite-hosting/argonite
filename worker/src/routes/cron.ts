@@ -2,6 +2,7 @@ import type { Env } from '../env';
 import { appConfigured, projectRepo } from '../lib/app';
 import { checkWatchedReleases } from '../lib/autopublish';
 import { flushOutbox } from '../lib/datastore';
+import { assignMissingProjectIds } from '../lib/db';
 import { hashStoredImages } from '../lib/imagehash';
 import { refreshLinkChecks } from '../lib/linkcheck';
 import { moveUnlistedOffGitHub } from './userdata';
@@ -146,6 +147,7 @@ export async function runCron(cron: string, env: Env, scheduledTime = Date.now()
   }
   if (new Date(scheduledTime).getUTCMinutes() % 10 >= 2) return;
   await sweepScans(env);
+  await assignMissingProjectIds(env).catch((e) => console.error(JSON.stringify({ cron: 'project-ids', error: String(e) })));
   await finishScannedVersions(env).catch((e) => console.error(JSON.stringify({ cron: 'decide', error: String(e) })));
   await sweepSandbox(env).catch((e) => console.error(JSON.stringify({ cron: 'sandbox', error: String(e) })));
   await sweepAbandonedUploads(env);

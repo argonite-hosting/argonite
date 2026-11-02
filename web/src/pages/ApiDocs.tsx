@@ -7,7 +7,7 @@ import { Link } from '../lib/router';
 function endpoints(): [string, string, string][] {
   return [
     ['GET', '/v1/search', t('Search projects. Query: q, type, loaders, versions, categories (comma separated), environment (client or server), openSource=1, hideArchived=1, sort (relevance, downloads, follows, updated, newest), page, limit (max 50).')],
-    ['GET', '/v1/projects?ids=a,b', t('Several projects at once (up to 100 ids).')],
+    ['GET', '/v1/projects?ids=a,b', t('Several projects at once (up to 100 ids or project IDs).')],
     ['GET', '/v1/projects/{id|slug}', t('A project with members, gallery and links.')],
     ['GET', '/v1/projects/{id|slug}/versions', t('Live versions. Optional filters: loaders, gameVersions.')],
     ['GET', '/v1/projects/{id|slug}/dependents', t('Projects whose live versions depend on this one.')],
@@ -47,7 +47,8 @@ sha1:{file.sha1}
 sha256:{file.sha256}
 sha512:{file.sha512}`;
 
-const PUBLISH = `# 1. Describe the version and its files
+const PUBLISH = `# PROJECT_ID is the 8-character project ID shown on your project's page
+# 1. Describe the version and its files
 curl -X POST ${'$'}API/api/projects/PROJECT_ID/versions \\
   -H "Authorization: Bearer $ARGONITE_TOKEN" \\
   -H "Content-Type: application/json" \\
@@ -103,6 +104,10 @@ export default function ApiDocs() {
               </tbody>
             </table>
           </div>
+        </section>
+        <section class="card card-pad prose">
+          <h2>{t('Project IDs')}</h2>
+          <p>{t('Every project has a permanent 8-character ID made of letters and digits, shown on its page. It never changes, even when the project’s URL does, and it isn’t case-sensitive. Use it anywhere a path takes {id|slug}, and to publish from CI. A URL a project used to have keeps working until another project takes it, so for anything you store, keep the ID.')}</p>
         </section>
         <section class="card card-pad prose">
           <h2>{t('Verifying files')}</h2>

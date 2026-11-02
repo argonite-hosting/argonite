@@ -2,13 +2,14 @@ import { sortGameVersionsDesc } from '../../../shared/gameversions';
 import type { Channel, CommentMode, DependencyKind, FileKind, ProjectStatus, ProjectType, Side, VersionStatus } from '../../../shared/taxonomy';
 import { summariesOf, type SummaryRow } from './sandbox';
 import type { Dependency, FileInfo, Finding, GalleryImage, Member, OrgRef, Project, NativeFile, ProjectSummary, ScanSummary, Version } from '../../../shared/types';
-import { isId } from '../../../shared/validate';
+import { PROJECT_ID_ALPHABET, normalizeProjectId } from '../../../shared/validate';
 import type { Env } from '../env';
 import { rawUrl } from './github';
 
 export interface ProjectRow {
   pk: number;
   id: string;
+  public_id: string | null;
   slug: string;
   name: string;
   summary: string;
@@ -87,6 +88,7 @@ export function iconUrl(row: Pick<ProjectRow, 'repo_full_name' | 'icon_commit' |
 export function toSummary(row: ProjectRow): ProjectSummary {
   return {
     id: row.id,
+    publicId: row.public_id,
     slug: row.slug,
     name: row.name,
     summary: row.summary,
@@ -106,13 +108,74 @@ export function toSummary(row: ProjectRow): ProjectSummary {
 }
 
 // Ids and slugs never overlap (validateSlug rejects id-shaped slugs), so the shape decides which column to use.
-export function projectKeyColumn(key: string): 'id' | 'slug' {
-  return isId(key) ? 'id' : 'slug';
+// The internal id of the project a reference names: its internal id, its current URL, its permanent
+// public ID, or failing those a URL it used to have (until another project takes that URL). The two
+// parameters are the lower-cased reference and the public ID it could be ('' when it can't be one).
+export function projectRef(key: string, publicId: string): string {
+  return `(SELECT ref.id FROM (
+      SELECT id, 0 AS rank FROM projects WHERE id = ${key}
+      UNION ALL SELECT id, 1 FROM projects WHERE slug = ${key}
+      UNION ALL SELECT id, 2 FROM projects WHERE public_id = ${publicId}
+      UNION ALL SELECT project_id, 3 FROM slug_history WHERE slug = ${key}
+    ) ref ORDER BY ref.rank LIMIT 1)`;
 }
 
-export async function loadProjectRow(env: Env, idOrSlug: string): Promise<ProjectRow | null> {
-  const key = idOrSlug.toLowerCase();
-  return env.DB.prepare(`${PROJECT_SELECT} WHERE p.${projectKeyColumn(key)} = ? LIMIT 1`).bind(key).first<ProjectRow>();
+export function projectRefBinds(reference: string): [string, string] {
+  return [reference.trim().toLowerCase().slice(0, 64), normalizeProjectId(reference) ?? ''];
+}
+
+export async function loadProjectRow(env: Env, reference: string): Promise<ProjectRow | null> {
+  return env.DB.prepare(`${PROJECT_SELECT} WHERE p.id = ${projectRef('?1', '?2')} LIMIT 1`)
+    .bind(...projectRefBinds(reference))
+    .first<ProjectRow>();
+}
+
+// A new permanent public ID that no project uses as its ID or URL. Retried by the caller if an insert
+// still races another one; the database's unique index and triggers have the last word.
+export async function newProjectId(env: Env): Promise<string> {
+  for (let attempt = 0; attempt < 20; attempt++) {
+    // 252 is the largest multiple of 36 below 256, so every character is equally likely.
+    const id = [...crypto.getRandomValues(new Uint8Array(32))].filter((b) => b < 252).slice(0, 8).map((b) => PROJECT_ID_ALPHABET[b % 36]).join('');
+    if (id.length !== 8) continue;
+    const taken = await env.DB.prepare('SELECT 1 FROM projects WHERE public_id = ?1 OR slug = ?1 LIMIT 1').bind(id).first();
+    if (!taken) return id;
+  }
+  throw new Error('could not find a free project id');
+}
+
+// Statements that free deleted projects' URLs for anyone to take. Each URL moves to a placeholder
+// nobody can type and is remembered, so a moderator restoring the project can hand it back if it's free.
+export function releaseSlugs(env: Env, column: 'id' | 'owner_id', value: string): D1PreparedStatement[] {
+  const now = Date.now();
+  return [
+    env.DB.prepare(`INSERT OR REPLACE INTO slug_history (slug, project_id, created_at) SELECT slug, id, ? FROM projects WHERE ${column} = ? AND slug NOT LIKE '~%'`).bind(now, value),
+    env.DB.prepare(`UPDATE projects SET slug = '~' || id WHERE ${column} = ? AND slug NOT LIKE '~%'`).bind(value),
+  ];
+}
+
+// Gives a restored project its last URL back when no other project has taken it since, or a new one.
+export function restoreSlug(env: Env, projectId: string): D1PreparedStatement[] {
+  return [
+    env.DB.prepare(
+      `UPDATE projects SET slug = COALESCE(
+         (SELECT h.slug FROM slug_history h WHERE h.project_id = ?1 AND NOT EXISTS (SELECT 1 FROM projects x WHERE x.slug = h.slug) ORDER BY h.created_at DESC LIMIT 1),
+         'project-' || COALESCE(public_id, id))
+       WHERE id = ?1 AND slug LIKE '~%'`,
+    ).bind(projectId),
+    env.DB.prepare('DELETE FROM slug_history WHERE slug = (SELECT slug FROM projects WHERE id = ?)').bind(projectId),
+  ];
+}
+
+// Gives an ID to any project still without one (projects from before IDs, or an unlucky draw in the migration).
+export async function assignMissingProjectIds(env: Env): Promise<void> {
+  const rows = await env.DB.prepare('SELECT id FROM projects WHERE public_id IS NULL LIMIT 200').all<{ id: string }>();
+  for (const r of rows.results) {
+    try {
+      await env.DB.prepare('UPDATE projects SET public_id = ? WHERE id = ? AND public_id IS NULL').bind(await newProjectId(env), r.id).run();
+    } catch {
+      // Raced another assignment; the next run tries again.
+    }
+  }
 }
 
 export async function toProject(env: Env, row: ProjectRow): Promise<Project> {

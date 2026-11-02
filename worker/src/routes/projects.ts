@@ -14,7 +14,7 @@ import {
 } from '../../../shared/validate';
 import { bytesToB64, newId, sha256Hex } from '../lib/crypto';
 import { assertSafeLinks } from '../lib/linkcheck';
-import { loadProjectRow, loadVersions, toProject } from '../lib/db';
+import { loadProjectRow, loadVersions, newProjectId, releaseSlugs, toProject } from '../lib/db';
 import { projectRepo, repoInstallationId } from '../lib/app';
 import { requireActor } from '../lib/auth';
 import { gh, repoPath, userToken, writableRepo, type GitHubRepo } from '../lib/github';
@@ -61,7 +61,7 @@ async function create(ctx: Ctx): Promise<Response> {
     `SELECT
        (SELECT COUNT(*) FROM projects WHERE owner_id = ?1 AND status != 'removed') AS total,
        (SELECT COUNT(*) FROM projects WHERE owner_id = ?1 AND created_at > ?2) AS today,
-       (SELECT COUNT(*) FROM projects WHERE slug = ?3) AS taken`,
+       (SELECT COUNT(*) FROM projects WHERE slug = ?3 OR public_id = ?3) AS taken`,
   )
     .bind(user.id, Date.now() - 86_400_000, slug)
     .first<{ total: number; today: number; taken: number }>();
@@ -115,21 +115,32 @@ async function create(ctx: Ctx): Promise<Response> {
 
   const id = newId();
   const now = Date.now();
-  try {
-    await ctx.env.DB.batch([
-      ctx.env.DB.prepare(
-        `INSERT INTO projects (id, slug, name, summary, type, status, owner_id, repo_id, repo_full_name, installation_id, license, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, 'draft', ?, ?, ?, ?, ?, ?, ?)`,
-      ).bind(id, slug, name, summary, type, user.id, repo.id, repo.full_name, installationId, license, now, now),
-      ctx.env.DB.prepare("INSERT INTO members (project_id, user_id, role, permissions, accepted, created_at) VALUES (?, ?, 'owner', ?, 1, ?)").bind(id, user.id, PERM_ALL, now),
-      ...categories.map((c) => ctx.env.DB.prepare('INSERT INTO project_categories (project_id, category) VALUES (?, ?)').bind(id, c)),
-      audit(ctx.env, user.id, 'project.create', 'project', id, { slug, repo: repo.full_name }),
-    ]);
-  } catch (e) {
-    if (String(e).includes('UNIQUE')) throw conflict('That URL is already taken.');
-    throw e;
+  // The permanent public ID is checked against every ID and URL before use; if another project still
+  // takes it in the same instant, the database refuses and a new one is drawn.
+  let publicId = '';
+  for (let attempt = 0; ; attempt++) {
+    publicId = await newProjectId(ctx.env);
+    try {
+      await ctx.env.DB.batch([
+        ctx.env.DB.prepare(
+          `INSERT INTO projects (id, public_id, slug, name, summary, type, status, owner_id, repo_id, repo_full_name, installation_id, license, created_at, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?, 'draft', ?, ?, ?, ?, ?, ?, ?)`,
+        ).bind(id, publicId, slug, name, summary, type, user.id, repo.id, repo.full_name, installationId, license, now, now),
+        // A URL another project used to have is free again once someone takes it.
+        ctx.env.DB.prepare('DELETE FROM slug_history WHERE slug = ?').bind(slug),
+        ctx.env.DB.prepare("INSERT INTO members (project_id, user_id, role, permissions, accepted, created_at) VALUES (?, ?, 'owner', ?, 1, ?)").bind(id, user.id, PERM_ALL, now),
+        ...categories.map((c) => ctx.env.DB.prepare('INSERT INTO project_categories (project_id, category) VALUES (?, ?)').bind(id, c)),
+        audit(ctx.env, user.id, 'project.create', 'project', id, { slug, publicId, repo: repo.full_name }),
+      ]);
+      break;
+    } catch (e) {
+      const msg = String(e);
+      if (msg.includes('projects.public_id') && attempt < 4) continue;
+      if (msg.includes('UNIQUE') || msg.includes('clash')) throw conflict('That URL is already taken.');
+      throw e;
+    }
   }
-  return json({ id, slug }, 201);
+  return json({ id, publicId, slug }, 201);
 }
 
 async function manage(ctx: Ctx): Promise<Response> {
@@ -189,13 +200,15 @@ async function update(ctx: Ctx): Promise<Response> {
     await assertSafeLinks(ctx.env, 'description', description);
     set('description', cleanMultiline(description));
   }
+  let slugMoved: { from: string; to: string } | null = null;
   const slug = str(body, 'slug', { max: 64 });
   if (slug !== undefined && slug !== access.slug) {
     if (access.role !== 'owner' && !has(access.perms, PERM_ALL)) throw forbidden('Only the owner can change the URL.');
     check(validateSlug(slug), 'slug');
-    const taken = await ctx.env.DB.prepare('SELECT 1 FROM projects WHERE slug = ?').bind(slug).first();
+    const taken = await ctx.env.DB.prepare('SELECT 1 FROM projects WHERE slug = ?1 OR public_id = ?1').bind(slug).first();
     if (taken) throw conflict('That URL is already taken.');
     set('slug', slug);
+    slugMoved = { from: access.slug, to: slug };
   }
   const license = oneOf(body, 'license', LICENSE_IDS);
   if (license !== undefined) set('license', license);
@@ -233,6 +246,13 @@ async function update(ctx: Ctx): Promise<Response> {
   if (!sets.length && !categories) return json({ ok: true });
   set('updated_at', Date.now());
   const stmts = [ctx.env.DB.prepare(`UPDATE projects SET ${sets.join(', ')} WHERE id = ?`).bind(...binds, access.id)];
+  if (slugMoved) {
+    // The old URL keeps leading here until another project takes it; the new one stops pointing anywhere else.
+    stmts.push(
+      ctx.env.DB.prepare('INSERT OR REPLACE INTO slug_history (slug, project_id, created_at) VALUES (?, ?, ?)').bind(slugMoved.from, access.id, Date.now()),
+      ctx.env.DB.prepare('DELETE FROM slug_history WHERE slug = ?').bind(slugMoved.to),
+    );
+  }
   if (categories) {
     stmts.push(ctx.env.DB.prepare('DELETE FROM project_categories WHERE project_id = ?').bind(access.id));
     for (const c of categories) stmts.push(ctx.env.DB.prepare('INSERT INTO project_categories (project_id, category) VALUES (?, ?)').bind(access.id, c));
@@ -253,6 +273,7 @@ async function remove(ctx: Ctx): Promise<Response> {
   const body = await readJson(ctx.request);
   if (str(body, 'confirm', { required: true, max: 64 }) !== access.slug) throw badRequest('Type the project URL to confirm.', { confirm: 'Does not match.' });
   await ctx.env.DB.batch([
+    ...releaseSlugs(ctx.env, 'id', access.id),
     ctx.env.DB.prepare("UPDATE projects SET status = 'removed', status_reason = 'Deleted by owner', updated_at = ? WHERE id = ?").bind(Date.now(), access.id),
     audit(ctx.env, user.id, 'project.delete', 'project', access.id),
   ]);

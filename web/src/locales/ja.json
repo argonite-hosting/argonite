@@ -109,7 +109,6 @@
   "Change member permissions": "メンバーの権限を変更",
   "Change theme": "テーマを変更",
   "Changelog": "更新履歴",
-  "Changing this breaks old links.": "変更すると古いリンクは使えなくなります。",
   "Check now": "今すぐ確認",
   "Check the scanner’s signature": "スキャナーの署名を確認",
   "Check your dashboard for details.": "詳細はダッシュボードをご確認ください。",
@@ -850,7 +849,6 @@
   "Settings for {name}": "{name} の設定",
   "Settings · {name}": "設定 · {name}",
   "Settings → API tokens": "設定 → API トークン",
-  "Several projects at once (up to 100 ids).": "複数のプロジェクトを一度に取得（最大 100 ID）。",
   "Several versions at once (up to 80 ids).": "複数のバージョンを一度に取得（最大 80 ID）。",
   "Shader": "シェーダー",
   "Shaders": "シェーダー",
@@ -1215,5 +1213,11 @@
   },
   "Every file is fetched through a short-lived private link and scanned for malware, including every jar packed inside it. When something looks off, moderators can also try a mod, plugin or modpack out in an isolated environment. Resource packs, data packs and shaders are rejected outright if they contain any code.": "すべてのファイルは短時間だけ有効な非公開リンクで取得され、中に含まれるすべての jar も含めてマルウェアスキャンされます。気になる点があれば、モデレーターが Mod、プラグイン、Modpack を隔離された環境で試すこともできます。リソースパック、データパック、シェーダーは、コードが含まれていればその時点で拒否されます。",
   "Filter": "絞り込み",
-  "No matches": "一致なし"
+  "No matches": "一致なし",
+  "Project ID": "プロジェクト ID",
+  "Project IDs": "プロジェクト ID",
+  "Old links keep working until another project takes this URL.": "別のプロジェクトがこの URL を使うまで、古いリンクは引き続き使えます。",
+  "It never changes. It works in place of the URL anywhere, including the API and publishing.": "この ID は変わりません。API や公開を含め、どこでも URL の代わりに使えます。",
+  "Several projects at once (up to 100 ids or project IDs).": "複数のプロジェクトをまとめて取得（id かプロジェクト ID を最大 100 個）。",
+  "Every project has a permanent 8-character ID made of letters and digits, shown on its page. It never changes, even when the project’s URL does, and it isn’t case-sensitive. Use it anywhere a path takes {id|slug}, and to publish from CI. A URL a project used to have keeps working until another project takes it, so for anything you store, keep the ID.": "すべてのプロジェクトには、英数字 8 文字の変わらない ID があり、プロジェクトのページに表示されます。プロジェクトの URL が変わってもこの ID は変わらず、大文字と小文字も区別しません。{id|slug} を受け付けるパスや CI からの公開に使えます。以前の URL は別のプロジェクトに使われるまで有効なので、保存するときは ID を使ってください。"
 }

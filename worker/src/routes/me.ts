@@ -1,7 +1,7 @@
 import { SITE } from '../../../shared/config';
 import type { InstallationInfo, Invite, Me, ProjectSummary, RepoChoice } from '../../../shared/types';
 import { cleanMultiline, cleanText, hasControlChars } from '../../../shared/validate';
-import { PROJECT_SELECT, toSummary, type ProjectRow } from '../lib/db';
+import { PROJECT_SELECT, releaseSlugs, toSummary, type ProjectRow } from '../lib/db';
 import { collectNotifications } from './notifications';
 import { queueWrite, siteData } from '../lib/datastore';
 import { gh, revokeGrant, userToken } from '../lib/github';
@@ -93,6 +93,7 @@ async function deleteMe(ctx: Ctx): Promise<Response> {
     ctx.env.DB.prepare("UPDATE servers SET status = 'removed', updated_at = ? WHERE owner_id = ?").bind(now, user.id),
   ]);
   await ctx.env.DB.batch([
+    ...releaseSlugs(ctx.env, 'owner_id', user.id),
     ctx.env.DB.prepare("UPDATE projects SET status = 'removed', status_reason = 'Owner deleted their account', updated_at = ? WHERE owner_id = ?").bind(
       now,
       user.id,

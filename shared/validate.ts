@@ -108,6 +108,15 @@ export function validateUsername(u: string): boolean {
   return /^[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})$/.test(u);
 }
 
+// Permanent public project IDs: 8 letters and digits, case-insensitive, stored in lower case.
+export const PROJECT_ID_ALPHABET = 'abcdefghijklmnopqrstuvwxyz0123456789';
+
+// What someone typed, in any case, as a project ID, or null if it can't be one.
+export function normalizeProjectId(input: string): string | null {
+  const s = input.trim().toLowerCase();
+  return /^[a-z0-9]{8}$/.test(s) ? s : null;
+}
+
 export function isId(id: string): boolean {
   return /^[0-9a-z]{26}$/.test(id);
 }

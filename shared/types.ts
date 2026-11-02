@@ -29,6 +29,9 @@ export interface UserProfileRef {
 
 export interface ProjectSummary {
   id: string;
+  // The project's permanent public ID (8 characters). It never changes, even when the slug does, and
+  // works anywhere the API takes a project id or slug. Null only briefly for projects made before IDs.
+  publicId: string | null;
   slug: string;
   name: string;
   summary: string;

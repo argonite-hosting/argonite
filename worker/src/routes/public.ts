@@ -1,7 +1,7 @@
 import { SITE } from '../../../shared/config';
 import { CATEGORIES, LICENSES, LOADER_LABELS, PROJECT_TYPES, SORTS, type Sort } from '../../../shared/taxonomy';
 import type { GameVersion, SearchResult, UserPublic } from '../../../shared/types';
-import { isId, validateUsername } from '../../../shared/validate';
+import { isId, normalizeProjectId, validateUsername } from '../../../shared/validate';
 import { newId, sha256Hex } from '../lib/crypto';
 import { PROJECT_SELECT, loadProjectRow, loadVersions, parseJson, toProject, toSummary, type ProjectRow } from '../lib/db';
 import { downloadStatStatements } from './stats';
@@ -462,10 +462,15 @@ function idList(url: URL, key: string, max: number): string[] {
 
 async function bulkProjects(ctx: Ctx): Promise<Response> {
   await readLimit(ctx);
-  const ids = idList(ctx.url, 'ids', 100);
-  if (!ids.length) throw badRequest('Pass up to 100 project ids as ?ids=a,b,c');
-  const rows = await ctx.env.DB.prepare(`${PROJECT_SELECT} WHERE p.id IN (SELECT value FROM json_each(?)) AND p.status IN ('active', 'delisted')`)
-    .bind(JSON.stringify(ids))
+  // Internal ids and permanent project IDs can be mixed.
+  const raw = listParam(ctx.url, 'ids', 100);
+  const ids = raw.filter(isId);
+  const publicIds = raw.map((x) => normalizeProjectId(x)).filter((x): x is string => !!x);
+  if (!ids.length && !publicIds.length) throw badRequest('Pass up to 100 project ids as ?ids=a,b,c');
+  const rows = await ctx.env.DB.prepare(
+    `${PROJECT_SELECT} WHERE (p.id IN (SELECT value FROM json_each(?1)) OR p.public_id IN (SELECT value FROM json_each(?2))) AND p.status IN ('active', 'delisted')`,
+  )
+    .bind(JSON.stringify(ids), JSON.stringify(publicIds))
     .all<ProjectRow>();
   return json({ projects: rows.results.map(toSummary) });
 }
