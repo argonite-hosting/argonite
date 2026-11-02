@@ -5,6 +5,7 @@ import type { Dependency, FileInfo, Finding, GalleryImage, Member, OrgRef, Proje
 import { PROJECT_ID_ALPHABET, normalizeProjectId } from '../../../shared/validate';
 import type { Env } from '../env';
 import { rawUrl } from './github';
+import { apiUrl } from './runtime';
 
 export interface ProjectRow {
   pk: number;
@@ -164,6 +165,17 @@ export function restoreSlug(env: Env, projectId: string): D1PreparedStatement[] 
     ).bind(projectId),
     env.DB.prepare('DELETE FROM slug_history WHERE slug = (SELECT slug FROM projects WHERE id = ?)').bind(projectId),
   ];
+}
+
+// Drops this data centre's cached copies of a project's public API answers, so a change shows at once
+// (other data centres catch up within the 30-second cache time).
+export async function purgeProjectCache(env: Env, projectId: string, names: (string | undefined)[]): Promise<void> {
+  const row = await env.DB.prepare('SELECT slug, public_id FROM projects WHERE id = ?').bind(projectId).first<{ slug: string; public_id: string | null }>();
+  const keys = new Set([projectId, row?.slug, row?.public_id, ...names].filter((k): k is string => !!k));
+  const base = apiUrl();
+  await Promise.all(
+    [...keys].flatMap((k) => [`${base}/v1/projects/${k}`, `${base}/v1/projects/${k}/versions`].map((u) => caches.default.delete(new Request(u)).catch(() => false))),
+  );
 }
 
 // Gives an ID to any project still without one (projects from before IDs, or an unlucky draw in the migration).

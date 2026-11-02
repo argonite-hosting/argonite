@@ -273,6 +273,32 @@ function BadgeDialog({ project, onClose }: { project: Project; onClose: () => vo
   );
 }
 
+// Shown before opening the author's GitHub repository or release: files taken from there skip the
+// fingerprint check every download through Argonite gets.
+function GitHubWarning({ href, onClose }: { href: string; onClose: () => void }) {
+  return (
+    <Modal
+      title={t('Download from {site}, not GitHub', { site: SITE.name })}
+      description={t('Files you download here are checked against the fingerprint our scanner signed before they’re saved. Files taken straight from the author’s GitHub repository or releases skip that check, and could have been changed after the scan.')}
+      onClose={onClose}
+      footer={
+        <>
+          <button type="button" class="btn" onClick={onClose}>
+            {t('Stay here')}
+          </button>
+          <a class="btn btn-primary" href={href} target="_blank" rel="noopener noreferrer" onClick={onClose}>
+            <Icon name="github" /> {t('Open GitHub anyway')}
+          </a>
+        </>
+      }
+    >
+      <p class="field-hint">{t('Only download jars from GitHub if you trust this repository.')}</p>
+    </Modal>
+  );
+}
+
+const isGitHub = (href: string | null) => !!href && /^https:\/\/(www\.)?github\.com\//i.test(href);
+
 function UsedBy({ project }: { project: Project }) {
   const { data } = useAsync(() => pub<{ projects: ProjectSummary[] }>(`/v1/projects/${project.slug}/dependents?limit=6`), [project.id]);
   if (!data?.projects.length) return null;
@@ -427,6 +453,11 @@ function Sidebar({ project, versions }: { project: Project; versions: Version[] 
                 </li>
               ))}
           </ul>
+          {links.some((l) => isGitHub(l.href)) && (
+            <p class="field-hint github-note">
+              <Icon name="shieldAlert" /> {t('Download files here, not from the author’s GitHub repository, unless you trust it: only downloads through {site} are checked against their scanned fingerprint.', { site: SITE.name })}
+            </p>
+          )}
         </section>
       )}
 
@@ -740,6 +771,7 @@ function FileCard({ version, file }: { version: Version; file: FileInfo }) {
 function VersionView({ project, version, onReport, onChanged }: { project: Project; version: Version; onReport: () => void; onChanged: () => void }) {
   const { user } = useSession();
   const [revoking, setRevoking] = useState(false);
+  const [github, setGithub] = useState<string | null>(null);
   const [reason, setReason] = useState('');
   const revoke = async () => {
     try {
@@ -754,6 +786,7 @@ function VersionView({ project, version, onReport, onChanged }: { project: Proje
   const required = version.dependencies.filter((d) => d.kind === 'required');
   return (
     <div class="version-view">
+      {github && <GitHubWarning href={github} onClose={() => setGithub(null)} />}
       <Link href={`/project/${project.slug}/versions`} class="back-link">
         <Icon name="chevronLeft" /> {t('All versions')}
       </Link>
@@ -775,9 +808,9 @@ function VersionView({ project, version, onReport, onChanged }: { project: Proje
             {(close) => (
               <>
                 {version.releaseUrl && (
-                  <a class="menu-item" href={version.releaseUrl} target="_blank" rel="noopener noreferrer" onClick={close}>
+                  <button type="button" class="menu-item" onClick={() => (close(), setGithub(version.releaseUrl))}>
                     <Icon name="github" /> {t('View GitHub release')}
-                  </a>
+                  </button>
                 )}
                 <button type="button" class="menu-item" onClick={() => (close(), onReport())}>
                   <Icon name="flag" /> {t('Report version')}
@@ -861,6 +894,7 @@ export default function ProjectPage({ params }: { params: Record<string, string>
   const { data, error, loading, reload } = useAsync(() => (ready ? loadProject(slug, !!user) : new Promise<Loaded>(() => undefined)), [slug, ready, user?.id]);
   const [reporting, setReporting] = useState<{ type: 'project' | 'version'; id: string; label: string } | null>(null);
   const [badges, setBadges] = useState(false);
+  const [github, setGithub] = useState<string | null>(null);
   const [viewer, setViewer] = useState<{ following: boolean | null; role: string | null; perms: number }>({ following: null, role: null, perms: 0 });
   const head = data ? projectHead(data.project, tab, tab === 'version' ? data.versions.find((v) => v.id === params.versionId) : null) : null;
   useHead(head ? head.title : null, head?.description, head?.noindex || data?.draft ? 'noindex' : undefined);
@@ -968,9 +1002,9 @@ export default function ProjectPage({ params }: { params: Record<string, string>
             <Menu label={t('More actions')} trigger={<Icon name="list" />}>
               {(close) => (
                 <>
-                  <a class="menu-item" href={project.repo.url} target="_blank" rel="noopener noreferrer" onClick={close}>
+                  <button type="button" class="menu-item" onClick={() => (close(), setGithub(project.repo.url))}>
                     <Icon name="github" /> {t('GitHub repository')}
-                  </a>
+                  </button>
                   {canManage && has(viewer.perms, PERM.UPLOAD_VERSION) && (
                     <Link class="menu-item" href={`${base}/upload`} onClick={close}>
                       <Icon name="upload" /> {t('Upload a version')}
@@ -1055,6 +1089,7 @@ export default function ProjectPage({ params }: { params: Record<string, string>
         {tab !== 'version' && tab !== 'contents' && tab !== 'comments' && <Sidebar project={project} versions={versions} />}
       </div>
       {reporting && <ReportDialog targetType={reporting.type} targetId={reporting.id} label={reporting.label} onClose={() => setReporting(null)} />}
+      {github && <GitHubWarning href={github} onClose={() => setGithub(null)} />}
       {badges && <BadgeDialog project={project} onClose={() => setBadges(false)} />}
     </div>
   );

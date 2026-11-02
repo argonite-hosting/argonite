@@ -35,10 +35,35 @@ function networkError(): ApiError {
 }
 
 // Public reads never send cookies, so they're cacheable and safe to embed anywhere.
+// Public reads are cached for 30 seconds (at Cloudflare and in the browser). After you change
+// something, your own reads skip those caches for a few minutes so you see your edit straight away;
+// everyone else catches up when the cache expires.
+const FRESH_KEY = 'argonite-fresh';
+const FRESH_MS = 5 * 60_000;
+
+function markFresh(): void {
+  try {
+    sessionStorage.setItem(FRESH_KEY, String(Date.now()));
+  } catch {
+    // Storage blocked: reads simply stay cached.
+  }
+}
+
+function freshStamp(): string | null {
+  try {
+    const at = Number(sessionStorage.getItem(FRESH_KEY));
+    return at && Date.now() - at < FRESH_MS ? String(at) : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function pub<T>(path: string, init?: RequestInit): Promise<T> {
   let res: Response;
+  const stamp = !init?.method || init.method === 'GET' ? freshStamp() : null;
+  const url = stamp ? `${API_URL}${path}${path.includes('?') ? '&' : '?'}_fresh=${stamp}` : API_URL + path;
   try {
-    res = await fetch(API_URL + path, { ...init, credentials: 'omit' });
+    res = await fetch(url, { ...init, ...(stamp ? { cache: 'no-store' as RequestCache } : {}), credentials: 'omit' });
   } catch {
     throw networkError();
   }
@@ -61,7 +86,9 @@ export async function api<T>(method: string, path: string, body?: unknown, signa
     if ((e as Error).name === 'AbortError') throw e;
     throw networkError();
   }
-  return parse<T>(res);
+  const out = await parse<T>(res);
+  if (method !== 'GET') markFresh();
+  return out;
 }
 
 export interface UploadProgress {
@@ -82,7 +109,10 @@ export function upload<T>(method: string, path: string, body: Blob, onProgress: 
     xhr.onabort = () => reject(new ApiError(0, 'aborted', t('Upload cancelled.')));
     xhr.onload = () => {
       const res = new Response(xhr.responseText, { status: xhr.status });
-      parse<T>(res).then(resolve, reject);
+      parse<T>(res).then((v) => {
+        markFresh();
+        resolve(v);
+      }, reject);
     };
     xhr.send(body);
   });

@@ -1219,5 +1219,11 @@
   "Old links keep working until another project takes this URL.": "別のプロジェクトがこの URL を使うまで、古いリンクは引き続き使えます。",
   "It never changes. It works in place of the URL anywhere, including the API and publishing.": "この ID は変わりません。API や公開を含め、どこでも URL の代わりに使えます。",
   "Several projects at once (up to 100 ids or project IDs).": "複数のプロジェクトをまとめて取得（id かプロジェクト ID を最大 100 個）。",
-  "Every project has a permanent 8-character ID made of letters and digits, shown on its page. It never changes, even when the project’s URL does, and it isn’t case-sensitive. Use it anywhere a path takes {id|slug}, and to publish from CI. A URL a project used to have keeps working until another project takes it, so for anything you store, keep the ID.": "すべてのプロジェクトには、英数字 8 文字の変わらない ID があり、プロジェクトのページに表示されます。プロジェクトの URL が変わってもこの ID は変わらず、大文字と小文字も区別しません。{id|slug} を受け付けるパスや CI からの公開に使えます。以前の URL は別のプロジェクトに使われるまで有効なので、保存するときは ID を使ってください。"
+  "Every project has a permanent 8-character ID made of letters and digits, shown on its page. It never changes, even when the project’s URL does, and it isn’t case-sensitive. Use it anywhere a path takes {id|slug}, and to publish from CI. A URL a project used to have keeps working until another project takes it, so for anything you store, keep the ID.": "すべてのプロジェクトには、英数字 8 文字の変わらない ID があり、プロジェクトのページに表示されます。プロジェクトの URL が変わってもこの ID は変わらず、大文字と小文字も区別しません。{id|slug} を受け付けるパスや CI からの公開に使えます。以前の URL は別のプロジェクトに使われるまで有効なので、保存するときは ID を使ってください。",
+  "Download from {site}, not GitHub": "GitHub ではなく {site} からダウンロードしてください",
+  "Files you download here are checked against the fingerprint our scanner signed before they’re saved. Files taken straight from the author’s GitHub repository or releases skip that check, and could have been changed after the scan.": "ここでダウンロードしたファイルは、保存前にスキャナーが署名したフィンガープリントと照合されます。作者の GitHub リポジトリやリリースから直接取得したファイルはこの確認を通らず、スキャン後に変更されている可能性があります。",
+  "Only download jars from GitHub if you trust this repository.": "このリポジトリを信頼できる場合だけ、GitHub から jar をダウンロードしてください。",
+  "Open GitHub anyway": "それでも GitHub を開く",
+  "Stay here": "このページにとどまる",
+  "Download files here, not from the author’s GitHub repository, unless you trust it: only downloads through {site} are checked against their scanned fingerprint.": "信頼できる場合を除き、ファイルは作者の GitHub リポジトリではなくここからダウンロードしてください。{site} 経由のダウンロードだけがスキャン済みのフィンガープリントと照合されます。"
 }

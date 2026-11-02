@@ -1219,5 +1219,11 @@
   "Old links keep working until another project takes this URL.": "在其他项目使用此 URL 之前，旧链接仍然有效。",
   "It never changes. It works in place of the URL anywhere, including the API and publishing.": "它永远不会改变，可在任何地方代替 URL 使用，包括 API 和发布。",
   "Several projects at once (up to 100 ids or project IDs).": "一次获取多个项目（最多 100 个 id 或项目 ID）。",
-  "Every project has a permanent 8-character ID made of letters and digits, shown on its page. It never changes, even when the project’s URL does, and it isn’t case-sensitive. Use it anywhere a path takes {id|slug}, and to publish from CI. A URL a project used to have keeps working until another project takes it, so for anything you store, keep the ID.": "每个项目都有一个由字母和数字组成的 8 位永久 ID，显示在项目页面上。即使项目的 URL 改变，它也不会变，并且不区分大小写。在任何接受 {id|slug} 的路径中以及从 CI 发布时都可以使用它。项目以前用过的 URL 会一直有效，直到被其他项目占用，因此请始终保存 ID。"
+  "Every project has a permanent 8-character ID made of letters and digits, shown on its page. It never changes, even when the project’s URL does, and it isn’t case-sensitive. Use it anywhere a path takes {id|slug}, and to publish from CI. A URL a project used to have keeps working until another project takes it, so for anything you store, keep the ID.": "每个项目都有一个由字母和数字组成的 8 位永久 ID，显示在项目页面上。即使项目的 URL 改变，它也不会变，并且不区分大小写。在任何接受 {id|slug} 的路径中以及从 CI 发布时都可以使用它。项目以前用过的 URL 会一直有效，直到被其他项目占用，因此请始终保存 ID。",
+  "Download from {site}, not GitHub": "请从 {site} 下载，而不是 GitHub",
+  "Files you download here are checked against the fingerprint our scanner signed before they’re saved. Files taken straight from the author’s GitHub repository or releases skip that check, and could have been changed after the scan.": "在这里下载的文件会在保存前与我们扫描器签名的指纹进行核对。直接从作者的 GitHub 仓库或发布页获取的文件会跳过这项检查，可能在扫描后被修改过。",
+  "Only download jars from GitHub if you trust this repository.": "只有在信任此仓库时才从 GitHub 下载 jar。",
+  "Open GitHub anyway": "仍然打开 GitHub",
+  "Stay here": "留在这里",
+  "Download files here, not from the author’s GitHub repository, unless you trust it: only downloads through {site} are checked against their scanned fingerprint.": "请在这里下载文件，而不是从作者的 GitHub 仓库下载，除非你信任它：只有通过 {site} 的下载才会与扫描过的指纹核对。"
 }

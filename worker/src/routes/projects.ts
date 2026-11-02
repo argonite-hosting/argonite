@@ -14,7 +14,7 @@ import {
 } from '../../../shared/validate';
 import { bytesToB64, newId, sha256Hex } from '../lib/crypto';
 import { assertSafeLinks } from '../lib/linkcheck';
-import { loadProjectRow, loadVersions, newProjectId, releaseSlugs, toProject } from '../lib/db';
+import { loadProjectRow, loadVersions, newProjectId, purgeProjectCache, releaseSlugs, toProject } from '../lib/db';
 import { projectRepo, repoInstallationId } from '../lib/app';
 import { requireActor } from '../lib/auth';
 import { gh, repoPath, userToken, writableRepo, type GitHubRepo } from '../lib/github';
@@ -258,6 +258,7 @@ async function update(ctx: Ctx): Promise<Response> {
     for (const c of categories) stmts.push(ctx.env.DB.prepare('INSERT INTO project_categories (project_id, category) VALUES (?, ?)').bind(access.id, c));
   }
   await ctx.env.DB.batch(stmts);
+  ctx.exec.waitUntil(purgeProjectCache(ctx.env, access.id, [access.slug, slugMoved?.to]));
 
   const after = await ctx.env.DB.prepare('SELECT license, license_url FROM projects WHERE id = ?').bind(access.id).first<{ license: string; license_url: string | null }>();
   if (after?.license === 'LicenseRef-Custom' && !after.license_url) {

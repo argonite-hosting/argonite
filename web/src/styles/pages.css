@@ -1955,3 +1955,18 @@ button.gallery-item:hover {
   height: 12px;
   border-width: 2px;
 }
+
+/* Note under a project's links when its source is on GitHub */
+.github-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin: 10px 0 0;
+}
+.github-note svg {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  margin-top: 3px;
+  color: var(--warning);
+}
