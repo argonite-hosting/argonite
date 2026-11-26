@@ -1649,6 +1649,12 @@ button.gallery-item:hover {
   flex-wrap: wrap;
   gap: 6px 10px;
 }
+.manage-row-title > svg {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  color: var(--text-3);
+}
 .manage-reason {
   display: flex;
   align-items: flex-start;
