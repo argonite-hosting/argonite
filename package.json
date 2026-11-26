@@ -1,6 +1,6 @@
 {
   "name": "argonite",
-  "version": "1.5.4",
+  "version": "1.5.5",
   "private": true,
   "license": "AGPL-3.0-only",
   "type": "module",
@@ -23,6 +23,6 @@
   },
   "allowScripts": {
     "esbuild@0.28.2": true,
-    "workerd@1.20261019.1": true
+    "workerd@1.20261116.1": true
   }
 }
