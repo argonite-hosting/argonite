@@ -1,13 +1,14 @@
 import { SITE } from '../../../shared/config';
 import { adminIds } from '../env';
-import { open, pkceChallenge, randomToken, safeEqual, seal } from '../lib/crypto';
+import { open, pkceChallenge, randomToken, safeEqual, seal, sha256Hex } from '../lib/crypto';
+import { APP_CHALLENGE, APP_CODE, APP_HANDOFF_TTL_MS, APP_VERIFIER, handoffPage, refusalPage } from '../lib/applogin';
 import { authorizeUrl, exchangeCode, gh, storeTokens, type GitHubUser } from '../lib/github';
 import { assertSameSite, rateLimit } from '../lib/guard';
-import { clientIp, json } from '../lib/http';
+import { badRequest, clientIp, forbidden, json, readJson, unauthorized } from '../lib/http';
 import { apiUrl, siteUrl } from '../lib/runtime';
 import { newId } from '../lib/crypto';
 import type { Ctx, Router } from '../lib/router';
-import { OAUTH_COOKIE, cookie, createSession, destroySession, parseCookies } from '../lib/session';
+import { OAUTH_COOKIE, cookie, createSession, createSessionToken, destroySession, parseCookies, userFromRow, type UserRow } from '../lib/session';
 
 const STATE_TTL_MS = 10 * 60 * 1000;
 
@@ -16,6 +17,7 @@ interface OAuthState {
   verifier: string;
   returnTo: string;
   exp: number;
+  appChallenge?: string;
 }
 
 export function safeReturnPath(raw: string | null): string {
@@ -33,11 +35,14 @@ function redirect(location: string, cookies: string[] = []): Response {
 async function login(ctx: Ctx): Promise<Response> {
   await rateLimit(ctx.env.RL_AUTH, `login:${clientIp(ctx.request)}`);
   const verifier = randomToken(48);
+  const appChallenge = ctx.url.searchParams.get('app_challenge');
+  if (appChallenge !== null && !APP_CHALLENGE.test(appChallenge)) return refusalPage('The app sent a broken sign-in request. Update the app and try again.');
   const payload: OAuthState = {
     state: randomToken(24),
     verifier,
     returnTo: safeReturnPath(ctx.url.searchParams.get('return')),
     exp: Date.now() + STATE_TTL_MS,
+    ...(appChallenge ? { appChallenge } : {}),
   };
   const sealed = await seal(ctx.env.TOKEN_ENCRYPTION_KEY, JSON.stringify(payload), 'oauth-state');
   const redirectUri = `${apiUrl()}/auth/callback`;
@@ -109,8 +114,51 @@ async function callback(ctx: Ctx): Promise<Response> {
         ),
   ]);
   await storeTokens(ctx.env, userId, tokens);
+  if (st.appChallenge) return appHandoff(ctx, userId, st.appChallenge, clear);
   const sessionCookie = await createSession(ctx.env, userId);
   return redirect(`${site}${st.returnTo}`, [clear, sessionCookie]);
+}
+
+async function staffUser(ctx: Ctx, userId: string) {
+  const row = await ctx.env.DB.prepare('SELECT * FROM users WHERE id = ? AND deleted_at IS NULL').bind(userId).first<UserRow>();
+  const user = row ? userFromRow(row, ctx.env) : null;
+  if (!user || user.banned) return { user, refusal: 'This account is suspended.' };
+  if (user.role !== 'moderator' && user.role !== 'admin') return { user, refusal: `The app is only for ${SITE.name} moderators. Use the website instead.` };
+  return { user, refusal: null };
+}
+
+async function appHandoff(ctx: Ctx, userId: string, challenge: string, clear: string): Promise<Response> {
+  const { user, refusal } = await staffUser(ctx, userId);
+  let response: Response;
+  if (refusal || !user) {
+    response = refusalPage(refusal ?? 'This account is suspended.');
+  } else {
+    const code = randomToken(32);
+    await ctx.env.DB.prepare('INSERT INTO app_handoffs (id, user_id, challenge, expires_at) VALUES (?, ?, ?, ?)')
+      .bind(await sha256Hex(code), userId, challenge, Date.now() + APP_HANDOFF_TTL_MS)
+      .run();
+    response = handoffPage(user.username, code);
+  }
+  response.headers.append('Set-Cookie', clear);
+  return response;
+}
+
+async function appSession(ctx: Ctx): Promise<Response> {
+  await rateLimit(ctx.env.RL_AUTH, `app:${clientIp(ctx.request)}`);
+  const body = await readJson(ctx.request, 2048);
+  const code = typeof body.code === 'string' ? body.code : '';
+  const verifier = typeof body.verifier === 'string' ? body.verifier : '';
+  if (!APP_CODE.test(code) || !APP_VERIFIER.test(verifier)) throw badRequest('Invalid sign-in code.');
+  const row = await ctx.env.DB.prepare('DELETE FROM app_handoffs WHERE id = ? RETURNING user_id, challenge, expires_at')
+    .bind(await sha256Hex(code))
+    .first<{ user_id: string; challenge: string; expires_at: number }>();
+  if (!row || row.expires_at < Date.now() || !safeEqual(await pkceChallenge(verifier), row.challenge)) {
+    throw unauthorized('That sign-in link has expired or was already used. Sign in again.');
+  }
+  const { user, refusal } = await staffUser(ctx, row.user_id);
+  if (refusal || !user) throw forbidden(refusal ?? 'This account is suspended.');
+  const { token, expiresAt } = await createSessionToken(ctx.env, user.id);
+  return json({ token, expiresAt, user: { id: user.id, username: user.username, avatarUrl: user.avatarUrl, role: user.role } });
 }
 
 async function findInstallationId(token: string): Promise<number | null> {
@@ -132,4 +180,5 @@ export function authRoutes(r: Router): void {
   r.get('/auth/login', login);
   r.get('/auth/callback', callback);
   r.post('/auth/logout', logout);
+  r.post('/auth/app/session', appSession);
 }

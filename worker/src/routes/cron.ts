@@ -124,6 +124,7 @@ async function housekeeping(env: Env): Promise<void> {
     env.DB.prepare('DELETE FROM version_stats_daily WHERE day < ?').bind(day(731)),
     env.DB.prepare('DELETE FROM project_stats_daily WHERE day < ?').bind(day(731)),
     env.DB.prepare('DELETE FROM sessions WHERE expires_at < ?').bind(now),
+    env.DB.prepare('DELETE FROM app_handoffs WHERE expires_at < ?').bind(now),
     env.DB.prepare('DELETE FROM download_marks WHERE day < ?').bind(new Date(now - 3 * 86_400_000).toISOString().slice(0, 10)),
     env.DB.prepare('DELETE FROM webhook_deliveries WHERE received_at < ?').bind(now - 7 * 86_400_000),
     env.DB.prepare("DELETE FROM scan_jobs WHERE status IN ('done', 'failed') AND finished_at < ?").bind(now - 30 * 86_400_000),

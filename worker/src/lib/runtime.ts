@@ -16,6 +16,10 @@ export function githubApi(): string {
   return 'https://api.github.com';
 }
 
+export function githubWeb(): string {
+  return 'https://github.com';
+}
+
 export function githubUploads(): string {
   return 'https://uploads.github.com/';
 }

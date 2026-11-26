@@ -129,12 +129,17 @@ export async function requireAdmin(ctx: Ctx): Promise<SessionUser> {
   return user;
 }
 
-export async function createSession(env: Env, userId: string): Promise<string> {
+export async function createSessionToken(env: Env, userId: string): Promise<{ token: string; expiresAt: number }> {
   const token = randomToken(32);
   const now = Date.now();
   await env.DB.prepare('INSERT INTO sessions (id, user_id, created_at, expires_at, last_seen_at) VALUES (?, ?, ?, ?, ?)')
     .bind(await sha256Hex(token), userId, now, now + SESSION_TTL_MS, now)
     .run();
+  return { token, expiresAt: now + SESSION_TTL_MS };
+}
+
+export async function createSession(env: Env, userId: string): Promise<string> {
+  const { token } = await createSessionToken(env, userId);
   return cookie(SESSION_COOKIE, token, SESSION_TTL_MS / 1000);
 }
 

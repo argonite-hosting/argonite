@@ -2,7 +2,7 @@ import { SITE } from '../../../shared/config';
 import type { Env } from '../env';
 import { open, seal } from './crypto';
 import { HttpError } from './http';
-import { githubApi, rawBase } from './runtime';
+import { githubApi, githubWeb, rawBase } from './runtime';
 
 const UA = `${SITE.name}-API`;
 const REFRESH_SKEW_MS = 5 * 60 * 1000;
@@ -98,7 +98,7 @@ export function githubMessage(status: number, msg: string): string {
 }
 
 export function authorizeUrl(env: Env, redirectUri: string, state: string, challenge: string): string {
-  const u = new URL('https://github.com/login/oauth/authorize');
+  const u = new URL(`${githubWeb()}/login/oauth/authorize`);
   u.searchParams.set('client_id', env.GITHUB_CLIENT_ID);
   u.searchParams.set('redirect_uri', redirectUri);
   u.searchParams.set('state', state);
@@ -108,7 +108,7 @@ export function authorizeUrl(env: Env, redirectUri: string, state: string, chall
 }
 
 async function tokenRequest(env: Env, params: Record<string, string>): Promise<TokenResponse> {
-  const res = await fetch('https://github.com/login/oauth/access_token', {
+  const res = await fetch(`${githubWeb()}/login/oauth/access_token`, {
     method: 'POST',
     headers: { Accept: 'application/json', 'Content-Type': 'application/json', 'User-Agent': UA },
     body: JSON.stringify({ client_id: env.GITHUB_CLIENT_ID, client_secret: env.GITHUB_CLIENT_SECRET, ...params }),
